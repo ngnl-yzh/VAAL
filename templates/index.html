@@ -152,7 +152,7 @@ pre.preview{background:#0a0d12;border:1px solid var(--line);border-radius:8px;
   <nav>
     <button data-view="dash" class="active">{{ t('nav.dashboard') }}</button>
     <button data-view="report">{{ t('nav.report') }}</button>
-    <button data-view="queue">{{ t('nav.queue') }}</button>
+    {% if is_admin %}<button data-view="queue">{{ t('nav.queue') }}</button>{% endif %}
     {% if is_admin %}<button data-view="settings">{{ t('nav.settings') }}</button>{% endif %}
   </nav>
   <div class="langsw">
@@ -716,7 +716,7 @@ $('#btnArchiveDir')?.addEventListener('click', () => api.post('/api/open-archive
 $$('[data-pipe]').forEach(b => b.addEventListener('click', () =>
   runPipeline(b.dataset.pipe.split(','))));
 
-$('#qAdd').addEventListener('click', async () => {
+$('#qAdd')?.addEventListener('click', async () => {
   const r = await api.post('/api/queue', {url: $('#qUrl').value, note: $('#qNote').value});
   if (r.error) { alert(r.error); return; }
   $('#qUrl').value = ''; $('#qNote').value = '';

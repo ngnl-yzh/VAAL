@@ -398,9 +398,10 @@ def api_used(asset_id):
     return jsonify({"usage_count": row["usage_count"] if row else 0})
 
 
-# ---------- 수동 링크 큐 (X 대체) ----------
+# ---------- 수동 링크 큐 (X 대체) — 수집 파이프라인 입력이라 관리자 전용 ----------
 
 @app.route("/api/queue", methods=["GET", "POST"])
+@admin_required
 def api_queue():
     db = get_db()
     if request.method == "GET":
