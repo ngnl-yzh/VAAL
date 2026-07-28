@@ -3,11 +3,14 @@
 import json
 import os
 import re
+import secrets
 import threading
+from functools import wraps
 
-from flask import Flask, g, jsonify, redirect, render_template, request
+from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 
 import archiver
+import auth
 import i18n
 import pipeline
 import trends
@@ -17,6 +20,9 @@ from db import (asset_dict, connect, get_settings, init_db, now_iso,
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True  # debug=False에서도 템플릿 수정 반영
+# 세션 서명 키 — 배포 시 반드시 SECRET_KEY 환경변수로 진짜 값을 지정해야 한다.
+# (여러 워커/재시작 간 세션이 유지되려면 고정된 값이 필요하다.)
+app.secret_key = os.environ.get("SECRET_KEY") or "insecure-dev-key-set-SECRET_KEY-env-var"
 
 
 @app.before_request
@@ -27,6 +33,7 @@ def _set_locale():
 @app.context_processor
 def _inject_i18n():
     lang = getattr(g, "lang", i18n.DEFAULT_LOCALE)
+    u = current_user()
     return {
         "lang": lang,
         "t": lambda key: i18n.T[lang].get(key, i18n.T[i18n.DEFAULT_LOCALE].get(key, key)),
@@ -35,6 +42,8 @@ def _inject_i18n():
         "source_labels": i18n.SOURCE_LABELS[lang],
         "category_label": lambda c: i18n.category_label(c, lang),
         "category_labels_json": {c: i18n.category_label(c, lang) for c in CATEGORIES},
+        "user": u,
+        "is_admin": bool(u and auth.is_admin_email(u["email"])),
     }
 
 
@@ -73,6 +82,39 @@ def guard_readonly():
     return None
 
 
+# ---------- 계정/인증 ----------
+
+def current_user():
+    if "user" not in g:
+        uid = session.get("user_id")
+        g.user = get_db().execute("SELECT * FROM users WHERE id = ?",
+                                  (uid,)).fetchone() if uid else None
+    return g.user
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not current_user():
+            if request.path.startswith("/api/"):
+                return jsonify({"error": _e("api.login_required")}), 401
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        u = current_user()
+        if not u or not auth.is_admin_email(u["email"]):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": _e("api.admin_only")}), 403
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+    return wrapped
+
+
 # ---------- 페이지 ----------
 
 @app.route("/app")
@@ -103,6 +145,73 @@ def landing():
 @app.route("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    error = None
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        pw = request.form.get("password") or ""
+        pw2 = request.form.get("password_confirm") or ""
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            error = _e("api.email_invalid")
+        elif len(pw) < 8:
+            error = _e("auth.err_password_short")
+        elif pw != pw2:
+            error = _e("auth.err_password_mismatch")
+        else:
+            db = get_db()
+            if db.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
+                error = _e("auth.err_email_taken")
+            else:
+                token = auth.new_token()
+                db.execute(
+                    "INSERT INTO users (email, password_hash, verify_token, verify_sent_at, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (email, auth.hash_password(pw), token, now_iso(), now_iso()))
+                db.commit()
+                verify_url = url_for("verify_email", token=token, _external=True)
+                auth.send_verification_email(email, verify_url, log=print)
+                return render_template("signup.html", sent_to=email)
+    return render_template("signup.html", error=error)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        pw = request.form.get("password") or ""
+        row = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if not row or not auth.verify_password(pw, row["password_hash"]):
+            error = _e("auth.err_invalid_credentials")
+        elif not row["email_verified"]:
+            error = _e("auth.err_not_verified")
+        else:
+            session.clear()
+            session["user_id"] = row["id"]
+            session.permanent = True
+            return redirect(request.args.get("next") or request.form.get("next") or "/app")
+    return render_template("login.html", error=error, next=request.args.get("next", ""))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(request.referrer or "/")
+
+
+@app.route("/verify/<token>")
+def verify_email(token):
+    db = get_db()
+    row = db.execute("SELECT * FROM users WHERE verify_token = ? AND verify_token != ''",
+                     (token,)).fetchone()
+    if row:
+        db.execute("UPDATE users SET email_verified = 1, verify_token = '' WHERE id = ?",
+                  (row["id"],))
+        db.commit()
+    return render_template("verify.html", ok=bool(row))
 
 
 @app.route("/api/waitlist", methods=["POST"])
@@ -157,8 +266,12 @@ def api_assets():
         sql += (" AND (title LIKE ? OR description LIKE ? OR purpose_summary LIKE ?"
                 " OR usage_summary LIKE ? OR tags LIKE ? OR repo_full_name LIKE ?)")
         args += [f"%{q}%"] * 6
+    u = current_user()
     if flt == "favorite":
-        sql += " AND is_favorite = 1"
+        if not u:
+            return jsonify([])
+        sql += " AND id IN (SELECT asset_id FROM favorites WHERE user_id = ?)"
+        args.append(u["id"])
     elif flt == "rated":
         sql += " AND user_rating IS NOT NULL"
     elif flt == "unrated":
@@ -170,8 +283,23 @@ def api_assets():
         sql += " AND id IN (SELECT id FROM assets WHERE " + _recommend_where() + ")"
     sql += f" ORDER BY {sort} LIMIT 500"
 
-    rows = get_db().execute(sql, args).fetchall()
-    return jsonify([asset_dict(r) for r in rows])
+    db = get_db()
+    rows = db.execute(sql, args).fetchall()
+    my_favs = _my_favorite_ids(db, u)
+    return jsonify([_asset_dict_with_fav(r, my_favs) for r in rows])
+
+
+def _my_favorite_ids(db, user):
+    if not user:
+        return set()
+    return {r["asset_id"] for r in
+            db.execute("SELECT asset_id FROM favorites WHERE user_id = ?", (user["id"],))}
+
+
+def _asset_dict_with_fav(row, fav_ids):
+    d = asset_dict(row)
+    d["my_favorite"] = row["id"] in fav_ids
+    return d
 
 
 def _recommend_where():
@@ -187,7 +315,8 @@ def api_asset_detail(asset_id):
                            (asset_id,)).fetchone()
     if not row:
         return jsonify({"error": _e("api.not_found")}), 404
-    d = asset_dict(row)
+    db = get_db()
+    d = _asset_dict_with_fav(row, _my_favorite_ids(db, current_user()))
     # 원문 미리보기 (아카이브에서) — 공개 배포(READONLY)에서는 18장 규칙대로
     # 라이선스가 허용 목록에 있을 때만, 그것도 짧은 스니펫만 노출한다.
     archived = row["archive_status"] == "archived"
@@ -204,6 +333,7 @@ def api_asset_detail(asset_id):
 # ---------- 평가 (기획서 6.5) ----------
 
 @app.route("/api/assets/<int:asset_id>/rate", methods=["POST"])
+@admin_required
 def api_rate(asset_id):
     if (err := guard_readonly()):
         return err
@@ -219,9 +349,6 @@ def api_rate(asset_id):
     if "review" in data:
         sets.append("review_note = ?")
         args.append(str(data["review"])[:2000])
-    if "favorite" in data:
-        sets.append("is_favorite = ?")
-        args.append(1 if data["favorite"] else 0)
     if not sets:
         return jsonify({"error": _e("api.no_changes")}), 400
     sets.append("updated_at = ?")
@@ -233,6 +360,23 @@ def api_rate(asset_id):
         archiver.write_meta(db, row)  # meta.md에 평가 반영
         db.commit()
     return jsonify(asset_dict(row))
+
+
+# ---------- 개인 즐겨찾기 (로그인 사용자 누구나) ----------
+
+@app.route("/api/favorites/<int:asset_id>", methods=["POST", "DELETE"])
+@login_required
+def api_favorite(asset_id):
+    u = current_user()
+    db = get_db()
+    if request.method == "POST":
+        db.execute("INSERT OR IGNORE INTO favorites (user_id, asset_id, created_at) "
+                  "VALUES (?, ?, ?)", (u["id"], asset_id, now_iso()))
+    else:
+        db.execute("DELETE FROM favorites WHERE user_id = ? AND asset_id = ?",
+                  (u["id"], asset_id))
+    db.commit()
+    return jsonify({"ok": True})
 
 
 # ---------- 복사 이력 (기획서 6.7 — 내부 사용 빈도 신호) ----------
@@ -296,6 +440,7 @@ def _run_pipeline_bg(steps, use_ai, ai_limit):
 
 
 @app.route("/api/pipeline/run", methods=["POST"])
+@admin_required
 def api_pipeline_run():
     if (err := guard_readonly()):
         return err
@@ -366,6 +511,7 @@ def api_stats():
 # ---------- 설정 ----------
 
 @app.route("/api/settings", methods=["GET", "POST"])
+@admin_required
 def api_settings():
     db = get_db()
     if request.method == "GET":
@@ -384,6 +530,7 @@ def api_settings():
 # ---------- 아카이브 폴더 열기 ----------
 
 @app.route("/api/open-archive", methods=["POST"])
+@admin_required
 def api_open_archive():
     if (err := guard_readonly()):
         return err
@@ -399,6 +546,102 @@ def api_open_archive():
     os.makedirs(target, exist_ok=True)
     os.startfile(target)  # Windows 탐색기
     return jsonify({"ok": True})
+
+
+# ---------- 개인 모음집 + 공유 ----------
+
+def _new_slug(db):
+    slug = secrets.token_urlsafe(6)
+    while db.execute("SELECT 1 FROM collections WHERE share_slug = ?", (slug,)).fetchone():
+        slug = secrets.token_urlsafe(6)
+    return slug
+
+
+def _my_collections(db, user_id):
+    return db.execute(
+        """SELECT c.*, COUNT(ci.id) AS item_count FROM collections c
+           LEFT JOIN collection_items ci ON ci.collection_id = c.id
+           WHERE c.user_id = ? GROUP BY c.id ORDER BY c.created_at DESC""",
+        (user_id,)).fetchall()
+
+
+def _owned_collection(coll_id, user_id):
+    return get_db().execute("SELECT * FROM collections WHERE id = ? AND user_id = ?",
+                            (coll_id, user_id)).fetchone()
+
+
+@app.route("/api/collections", methods=["GET", "POST"])
+@login_required
+def api_collections():
+    db = get_db()
+    u = current_user()
+    if request.method == "GET":
+        return jsonify([dict(r) for r in _my_collections(db, u["id"])])
+    data = request.get_json(force=True, silent=True) or {}
+    name = (data.get("name") or "").strip()[:100]
+    if not name:
+        return jsonify({"error": _e("coll.name_required")}), 400
+    slug = _new_slug(db)
+    db.execute("INSERT INTO collections (user_id, name, share_slug, created_at) "
+              "VALUES (?, ?, ?, ?)", (u["id"], name, slug, now_iso()))
+    db.commit()
+    row = db.execute("SELECT c.*, 0 AS item_count FROM collections c WHERE share_slug = ?",
+                     (slug,)).fetchone()
+    return jsonify(dict(row))
+
+
+@app.route("/api/collections/<int:coll_id>/items", methods=["POST"])
+@login_required
+def api_collection_add_item(coll_id):
+    u = current_user()
+    if not _owned_collection(coll_id, u["id"]):
+        return jsonify({"error": _e("api.not_found")}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    asset_id = data.get("asset_id")
+    if not asset_id:
+        return jsonify({"error": _e("api.no_changes")}), 400
+    db = get_db()
+    db.execute("INSERT OR IGNORE INTO collection_items (collection_id, asset_id, added_at) "
+              "VALUES (?, ?, ?)", (coll_id, asset_id, now_iso()))
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/collections/<int:coll_id>/items/<int:asset_id>", methods=["DELETE"])
+@login_required
+def api_collection_remove_item(coll_id, asset_id):
+    u = current_user()
+    if not _owned_collection(coll_id, u["id"]):
+        return jsonify({"error": _e("api.not_found")}), 404
+    db = get_db()
+    db.execute("DELETE FROM collection_items WHERE collection_id = ? AND asset_id = ?",
+              (coll_id, asset_id))
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/collections")
+@login_required
+def collections_page():
+    u = current_user()
+    rows = _my_collections(get_db(), u["id"])
+    return render_template("collections.html", collections=[dict(r) for r in rows])
+
+
+@app.route("/c/<slug>")
+def collection_public(slug):
+    db = get_db()
+    coll = db.execute("SELECT * FROM collections WHERE share_slug = ?", (slug,)).fetchone()
+    if not coll:
+        return render_template("collection_public.html", coll=None), 404
+    items = db.execute(
+        """SELECT a.* FROM collection_items ci JOIN assets a ON a.id = ci.asset_id
+           WHERE ci.collection_id = ? ORDER BY ci.added_at DESC""",
+        (coll["id"],)).fetchall()
+    u = current_user()
+    is_owner = bool(u and u["id"] == coll["user_id"])
+    return render_template("collection_public.html", coll=dict(coll),
+                           items=[asset_dict(r) for r in items], is_owner=is_owner)
 
 
 init_db()

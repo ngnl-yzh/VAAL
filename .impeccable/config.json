@@ -29,6 +29,33 @@
         ],
         "createdAt": "2026-07-28T18:10:14.094Z",
         "reason": "Read-mode legal page; DESIGN.md documents a deliberate flat, single-family system stack across the whole project (dev-tool tone), and per new-work.md Operate/Read surfaces are well served by system stacks — hierarchy here comes from weight/size, not font pairing"
+      },
+      {
+        "rule": "single-font",
+        "value": "*",
+        "files": [
+          "templates/signup.html"
+        ],
+        "createdAt": "2026-07-28T18:29:24.336Z",
+        "reason": "Same documented system-wide choice as privacy.html — DESIGN.md specifies a flat single-family type system for this dark dev-tool product; auth pages inherit it"
+      },
+      {
+        "rule": "single-font",
+        "value": "*",
+        "files": [
+          "templates/login.html"
+        ],
+        "createdAt": "2026-07-28T18:29:24.405Z",
+        "reason": "Same documented system-wide choice as privacy.html — DESIGN.md specifies a flat single-family type system for this dark dev-tool product; auth pages inherit it"
+      },
+      {
+        "rule": "single-font",
+        "value": "*",
+        "files": [
+          "templates/verify.html"
+        ],
+        "createdAt": "2026-07-28T18:29:24.493Z",
+        "reason": "Same documented system-wide choice as privacy.html — DESIGN.md specifies a flat single-family type system for this dark dev-tool product; auth pages inherit it"
       }
     ]
   }

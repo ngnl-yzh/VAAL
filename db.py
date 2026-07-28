@@ -101,6 +101,54 @@ CREATE TABLE IF NOT EXISTS waitlist (
     created_at TEXT NOT NULL
 );
 
+-- 회원 계정. 관리자 여부는 DB 컬럼이 아니라 VAAL_ADMIN_EMAILS 환경변수로 판별한다
+-- (가입 순서로 관리자를 정하면 공개 배포 시 레이스 컨디션이 생길 수 있어서 피함).
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT DEFAULT '',
+    email_verified INTEGER DEFAULT 0,
+    verify_token TEXT DEFAULT '',
+    verify_sent_at TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+-- 개인 즐겨찾기 (로그인 사용자 누구나 — 사이트 전체 공용 평점/후기와는 별개)
+CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    asset_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
+    UNIQUE(user_id, asset_id)
+);
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
+
+-- 사용자별 개인 모음집 + 공유 링크
+CREATE TABLE IF NOT EXISTS collections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    share_slug TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(user_id);
+
+CREATE TABLE IF NOT EXISTS collection_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    collection_id INTEGER NOT NULL,
+    asset_id INTEGER NOT NULL,
+    added_at TEXT NOT NULL,
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
+    UNIQUE(collection_id, asset_id)
+);
+CREATE INDEX IF NOT EXISTS idx_collection_items ON collection_items(collection_id);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL

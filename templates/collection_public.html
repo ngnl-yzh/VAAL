@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ coll.name if coll else 'VAAL' }} — VAAL</title>
+<style>
+{% include "_tokens.css.html" %}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
+  font-family:'Segoe UI','Malgun Gothic',sans-serif;font-size:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:6px;
+  background:var(--panel2);color:var(--text);padding:5px 10px;font-size:12px;
+  transition:background-color .12s ease}
+button:hover{background:var(--hover-panel)}
+header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line)}
+header h1{font-size:17px}
+header h1 a{color:var(--text)}
+header h1 span{color:var(--accent)}
+header nav{margin-left:auto}
+main{max-width:860px;margin:0 auto;padding:40px 24px 64px}
+h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
+.owner-note{color:var(--dim);font-size:12.5px;margin-bottom:28px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px}
+.item .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--panel2);
+  color:var(--dim)}
+.item .name{font-weight:600;font-size:14px}
+.item .desc{color:var(--dim);font-size:12.5px;margin-bottom:10px}
+.cmdbox{position:relative;background:#0a0d12;border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:9px 80px 9px 11px;font-family:Consolas,monospace;
+  font-size:12px;white-space:pre-wrap;word-break:break-all;margin-bottom:6px}
+.cmdbox .copy{position:absolute;top:6px;right:6px}
+.cmdbox .lab{position:absolute;top:-9px;left:9px;background:var(--panel);
+  padding:0 5px;font-size:11px;color:var(--dim)}
+.item .foot{display:flex;gap:10px;align-items:center;margin-top:10px}
+.remove{color:var(--hot);background:transparent}
+.empty{color:var(--dim);padding:40px 0;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="/">VAAL <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
+  <nav><a href="/app">{{ 'Browse the archive' if lang == 'en' else '아카이브 둘러보기' }}</a></nav>
+</header>
+<main>
+{% if not coll %}
+  <div class="empty">{{ t('coll.public_not_found') }}</div>
+{% else %}
+  <h2>{{ coll.name }}</h2>
+  {% if is_owner %}<p class="owner-note"><a href="/collections">← {{ t('coll.my_collections_title') }}</a></p>{% endif %}
+
+  {% if not items %}
+  <div class="empty">{{ t('coll.empty') }}</div>
+  {% endif %}
+  {% for a in items %}
+  <div class="item" data-asset-id="{{ a.id }}">
+    <div class="top">
+      <span class="chip">{{ type_labels.get(a.type, a.type) }}</span>
+      {% if a.category %}<span class="chip">{{ category_label(a.category) }}</span>{% endif %}
+      <span class="name">{{ a.title }}</span>
+    </div>
+    <div class="desc">{{ a.purpose_summary or a.description or '' }}</div>
+    {% if a.terminal_template %}
+    <div class="cmdbox"><span class="lab">{{ t('detail.terminal') }}</span>
+      <button class="copy" data-text="{{ a.terminal_template }}">{{ t('detail.copy') }}</button>
+      {{ a.terminal_template }}</div>
+    {% endif %}
+    {% if a.claude_code_template %}
+    <div class="cmdbox"><span class="lab">Claude Code</span>
+      <button class="copy" data-text="{{ a.claude_code_template }}">{{ t('detail.copy') }}</button>
+      {{ a.claude_code_template }}</div>
+    {% endif %}
+    <div class="foot">
+      <a href="{{ a.source_url }}" target="_blank" rel="noopener">{{ 'Source ↗' if lang == 'en' else '출처 ↗' }}</a>
+      {% if is_owner %}<button class="remove" data-remove="{{ a.id }}">{{ t('coll.remove') }}</button>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}
+</main>
+
+<script>
+"use strict";
+document.querySelectorAll('.cmdbox .copy').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = btn.dataset.text;
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    const original = btn.textContent;
+    btn.textContent = {{ t('detail.copied') | tojson }};
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  });
+});
+
+const collId = {{ coll.id | tojson if coll else 'null' }};
+document.querySelectorAll('[data-remove]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const assetId = btn.dataset.remove;
+    const r = await fetch(`/api/collections/${collId}/items/${assetId}`, {method: 'DELETE'});
+    if (r.ok) btn.closest('.item').remove();
+  });
+});
+</script>
+</body>
+</html>

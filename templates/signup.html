@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('auth.signup_title') }} — VAAL</title>
+<style>
+{% include "_tokens.css.html" %}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
+  font-family:'Segoe UI','Malgun Gothic',sans-serif;font-size:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+header{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid var(--line)}
+header h1{font-size:17px}
+header h1 a{color:var(--text)}
+header h1 span{color:var(--accent)}
+main{max-width:380px;margin:64px auto;padding:0 24px}
+h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:20px}
+label{display:block;font-size:12.5px;color:var(--dim);margin:14px 0 4px}
+input{width:100%;font-family:inherit;font-size:14px;background:var(--panel2);
+  border:1px solid var(--line);color:var(--text);border-radius:6px;padding:9px 12px}
+input:focus{outline:none;border-color:var(--accent)}
+button{width:100%;margin-top:22px;font-family:inherit;cursor:pointer;border:none;
+  border-radius:6px;background:var(--accent);color:#0d1117;font-weight:600;
+  padding:10px 12px;font-size:14px}
+button:hover{background:#79b8ff}
+.error{background:rgba(248,81,73,.12);border:1px solid var(--hot);color:var(--hot);
+  border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:8px}
+.notice{background:rgba(63,185,80,.12);border:1px solid var(--accent2);color:var(--accent2);
+  border-radius:8px;padding:14px;font-size:13px;line-height:1.6}
+.switch{margin-top:18px;font-size:12.5px;color:var(--dim);text-align:center}
+</style>
+</head>
+<body>
+<header><h1><a href="/">VAAL <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1></header>
+<main>
+{% if sent_to %}
+  <h2>{{ t('auth.signup_title') }}</h2>
+  <div class="notice">{{ t('auth.check_email_notice').replace('{email}', sent_to) }}</div>
+  <p class="switch"><a href="/login">{{ t('auth.login') }} →</a></p>
+{% else %}
+  <h2>{{ t('auth.signup_title') }}</h2>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post">
+    <label>{{ t('auth.email') }}</label>
+    <input type="email" name="email" required autofocus>
+    <label>{{ t('auth.password') }}</label>
+    <input type="password" name="password" required minlength="8">
+    <label>{{ t('auth.password_confirm') }}</label>
+    <input type="password" name="password_confirm" required minlength="8">
+    <button type="submit">{{ t('auth.signup_button') }}</button>
+  </form>
+  <p class="switch">{{ t('auth.have_account') }} <a href="/login">{{ t('auth.login') }}</a></p>
+{% endif %}
+</main>
+</body>
+</html>
