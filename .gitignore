@@ -6,4 +6,5 @@ vaal.db-wal
 vaal.db-shm
 vaa-archive/
 .env
+admin_emails.txt
 .impeccable/hook.cache.json
