@@ -58,6 +58,8 @@ main{max-width:1080px;margin:0 auto;padding:0 24px}
 .demo-label{font-size:11px;color:var(--dim);text-transform:uppercase;
   letter-spacing:.04em;margin-bottom:8px}
 .demo-title{font-size:14px;font-weight:600;margin-bottom:2px}
+.demo-source{font-size:11px;font-weight:400;color:var(--dim);margin-left:8px}
+.demo-source:hover{color:var(--accent)}
 .demo-desc{font-size:12.5px;color:var(--dim);margin-bottom:14px}
 .cmdbox{position:relative;background:#0a0d12;border:1px solid var(--line);
   border-radius:var(--radius-sm);padding:11px 90px 11px 13px;
@@ -149,12 +151,14 @@ footer p{margin-bottom:4px}
     <div class="demo-card">
       {% if lang == 'en' %}
       <div class="demo-label">From the live archive</div>
-      <div class="demo-title">{{ demo.title }}</div>
-      <div class="demo-desc">Anthropic's official plugin marketplace — one click turns into this</div>
+      <div class="demo-title">{{ demo.title }}
+        <a href="{{ demo.source_url }}" target="_blank" rel="noopener" class="demo-source">Source ↗</a></div>
+      <div class="demo-desc">Anthropic's official plugin marketplace ({{ demo.license }} license) — one click turns into this</div>
       {% else %}
       <div class="demo-label">실제 아카이브에서</div>
-      <div class="demo-title">{{ demo.title }}</div>
-      <div class="demo-desc">Anthropic 공식 플러그인 마켓플레이스 — 클릭 한 번으로 아래처럼 변환됩니다</div>
+      <div class="demo-title">{{ demo.title }}
+        <a href="{{ demo.source_url }}" target="_blank" rel="noopener" class="demo-source">출처 ↗</a></div>
+      <div class="demo-desc">Anthropic 공식 플러그인 마켓플레이스 ({{ demo.license }} 라이선스) — 클릭 한 번으로 아래처럼 변환됩니다</div>
       {% endif %}
 
       <div class="cmdbox"><span class="lab">{{ 'Terminal' if lang == 'en' else '터미널' }}</span>

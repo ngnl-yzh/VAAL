@@ -91,7 +91,8 @@ def landing():
                           "WHERE is_official = 1").fetchone()["n"]
     # 데모용 실행 예시 — 공식·허용 라이선스·실행 템플릿이 실제로 있는 자산 중 트렌드 1위
     demo = db.execute(
-        "SELECT title, type, description, terminal_template, claude_code_template "
+        "SELECT title, type, description, terminal_template, claude_code_template, "
+        "       source_url, repo_full_name, license "
         "FROM assets WHERE is_official = 1 AND terminal_template != '' "
         "AND claude_code_template != '' ORDER BY trend_score DESC LIMIT 1"
     ).fetchone()
