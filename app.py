@@ -147,6 +147,28 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/robots.txt")
+def robots_txt():
+    body = f"User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /login\nDisallow: /signup\nDisallow: /collections\nSitemap: {request.host_url}sitemap.xml\n"
+    return app.response_class(body, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    base = request.host_url.rstrip("/")
+    urls = [
+        (f"{base}/", "1.0"),
+        (f"{base}/app", "0.8"),
+        (f"{base}/privacy", "0.3"),
+    ]
+    body = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for url, priority in urls:
+        body.append(f"  <url><loc>{url}</loc><priority>{priority}</priority></url>")
+    body.append("</urlset>")
+    return app.response_class("\n".join(body), mimetype="application/xml")
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     error = None
