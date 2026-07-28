@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ 'Privacy — VAAL' if lang == 'en' else '개인정보처리방침 — VAAL' }}</title>
+<style>
+{% include "_tokens.css.html" %}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
+  font-family:'Segoe UI','Malgun Gothic',sans-serif;font-size:14px;line-height:1.6}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+header{display:flex;align-items:center;gap:14px;padding:16px 24px;
+  border-bottom:1px solid var(--line)}
+header h1{font-size:17px}
+header h1 a{color:var(--text)}
+header h1 span{color:var(--accent)}
+header nav{margin-left:auto}
+main{max-width:680px;margin:0 auto;padding:40px 24px 64px}
+h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
+.updated{color:var(--dim);font-size:12.5px;margin-bottom:32px}
+section{margin-bottom:28px}
+h3{font-size:14px;margin-bottom:8px;color:var(--text)}
+p,li{color:var(--dim);font-size:13.5px}
+ul{padding-left:20px;margin-top:4px}
+li{margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a href="/">VAAL <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
+  <nav><a href="/">{{ '← Back home' if lang == 'en' else '← 홈으로' }}</a></nav>
+</header>
+
+<main>
+{% if lang == 'en' %}
+  <h2>Privacy Policy</h2>
+  <p class="updated">Last updated: 2026-07-29</p>
+
+  <section>
+    <h3>What we collect</h3>
+    <ul>
+      <li><b>Waitlist email</b> (landing page form) — stored to notify you when the public beta launches. Not shared with third parties.</li>
+      <li><b>Language preference</b> — a small cookie (<code>lang</code>) remembers whether you chose English or Korean. No tracking or advertising purpose.</li>
+      <li><b>Ratings, reviews, and usage counts</b> you enter on the archive (dashboard) — stored to power search, trend scoring, and recommendations within VAAL itself.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>What we don't do (yet)</h3>
+    <p>VAAL currently runs no analytics, advertising, or third-party tracking scripts. If that changes — for example, adding ad-supported monetization — this page and a cookie-consent notice will be updated before any such script goes live.</p>
+  </section>
+
+  <section>
+    <h3>Third-party data</h3>
+    <p>VAAL reads public repository metadata from the GitHub API to build the archive. This does not involve your personal data as a visitor.</p>
+  </section>
+
+  <section>
+    <h3>Data retention & deletion</h3>
+    <p>Waitlist emails are kept until the public beta launches or you ask us to remove them. To request deletion, contact us at the address below.</p>
+  </section>
+
+  <section>
+    <h3>Contact</h3>
+    <p>[add a contact email here before this goes live]</p>
+  </section>
+{% else %}
+  <h2>개인정보처리방침</h2>
+  <p class="updated">최종 수정일: 2026-07-29</p>
+
+  <section>
+    <h3>수집하는 정보</h3>
+    <ul>
+      <li><b>대기자 명단 이메일</b>(랜딩 페이지 등록) — 공개 베타 오픈 시 안내를 위해 보관합니다. 제3자와 공유하지 않습니다.</li>
+      <li><b>언어 선호도</b> — 영어/한국어 선택을 기억하는 작은 쿠키(<code>lang</code>)입니다. 추적·광고 목적이 아닙니다.</li>
+      <li><b>평점·후기·실행 횟수</b>(대시보드에서 직접 입력) — 검색·트렌드 스코어·추천 기능에 사용됩니다.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>아직 하지 않는 것</h3>
+    <p>VAAL은 현재 분석 도구, 광고, 제3자 추적 스크립트를 전혀 사용하지 않습니다. 추후 광고 기반 수익화 등을 추가할 경우, 해당 기능이 실제로 켜지기 전에 이 페이지와 쿠키 동의 배너를 먼저 업데이트합니다.</p>
+  </section>
+
+  <section>
+    <h3>제3자 데이터</h3>
+    <p>VAAL은 아카이브 구축을 위해 GitHub API에서 공개 저장소 메타데이터를 읽어옵니다. 방문자 개인정보와는 무관합니다.</p>
+  </section>
+
+  <section>
+    <h3>보관 및 삭제</h3>
+    <p>대기자 명단 이메일은 공개 베타 오픈 시까지, 또는 삭제 요청 시까지 보관합니다. 삭제를 원하시면 아래 연락처로 문의해 주세요.</p>
+  </section>
+
+  <section>
+    <h3>연락처</h3>
+    <p>[공개 전 연락 가능한 이메일을 여기에 추가하세요]</p>
+  </section>
+{% endif %}
+</main>
+</body>
+</html>

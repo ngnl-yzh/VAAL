@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-29T00:00:00+09:00",
+  "title": "Design System: VAAL",
+  "extensions": {
+    "shadows": [
+      { "name": "card-hover", "value": "0 4px 16px rgba(0,0,0,.35)", "purpose": "Card hover/focus lift — appears only on interaction, never at rest." },
+      { "name": "focus-ring", "value": "0 0 0 3px rgba(88,166,255,.25), 0 4px 16px rgba(0,0,0,.35)", "purpose": "Keyboard focus on cards — accent-tinted ring plus the hover shadow." },
+      { "name": "overlay-scrim", "value": "rgba(0,0,0,.55)", "purpose": "Backdrop behind the detail drawer." },
+      { "name": "drawer-separation", "value": "-16px 0 40px rgba(0,0,0,.45)", "purpose": "Separates the sliding detail drawer from the dimmed background." }
+    ],
+    "motion": [
+      { "name": "ease-drawer", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "Detail drawer slide-in — exponential ease-out from an already-visible off-canvas position." }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "The Personal Command Ledger",
+    "overview": "VAAL inherits GitHub's dark theme coordinates almost verbatim, reading as a personal command ledger rather than a marketing surface. Density over whitespace, borders over shadows at rest, one accent color reserved for anything clickable.",
+    "keyCharacteristics": [
+      "GitHub Dark palette shared with the audience's own daily tool — instant trust through familiarity.",
+      "Flat at rest; depth appears only as an interaction response.",
+      "Information density prioritized over decoration.",
+      "Single saturated accent (signal blue), reused nowhere else."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Signal Blue is reserved for things you can currently press.", "section": "colors" },
+      { "name": "The Flat-At-Rest Rule", "body": "Shadows appear only in response to state (hover, focus, open).", "section": "elevation" },
+      { "name": "The Mono-Means-Runnable Rule", "body": "Consolas is used only for copy-pasteable, runnable command strings.", "section": "typography" }
+    ],
+    "dos": [
+      "Do use Signal Blue only on interactive elements.",
+      "Do add shadows only as a state response, never at rest.",
+      "Do give every new interactive element a :focus-visible style."
+    ],
+    "donts": [
+      "Don't use gradients or glow as decoration.",
+      "Don't extend chip colors beyond asset-type classification.",
+      "Don't replace the dark tone with a light theme — extensions build on this world, they don't replace it."
+    ]
+  }
+}

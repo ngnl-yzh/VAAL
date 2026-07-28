@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+vaal.db
+vaal.db-journal
+vaal.db-wal
+vaal.db-shm
+vaa-archive/
+.env
+.impeccable/hook.cache.json

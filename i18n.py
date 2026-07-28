@@ -1,0 +1,241 @@
+# -*- coding: utf-8 -*-
+"""VAAL 다국어 지원 — 영어가 기본, 한국어로 전환 가능.
+
+DB에 저장되는 값(type/source 키, category 문자열)은 그대로 두고
+화면에 보여줄 라벨만 로케일별로 분리한다. category는 원래 한국어
+문자열이 그대로 DB 값이라 필터링 로직을 건드리지 않기 위해
+표시용 영어 매핑만 둔다(한국어는 원문 그대로 보여준다).
+"""
+
+LOCALES = ["en", "ko"]
+DEFAULT_LOCALE = "en"
+
+TYPE_LABELS = {
+    "en": {"skill": "Skill", "command": "Command", "plugin": "Plugin",
+           "rule": "Rule", "etc": "Other"},
+    "ko": {"skill": "스킬", "command": "커맨드", "plugin": "플러그인",
+           "rule": "룰", "etc": "기타"},
+}
+
+SOURCE_LABELS = {
+    "en": {"github": "GitHub", "awesome": "Awesome list", "hackernews": "HackerNews",
+           "claude-official": "Claude official", "cursor-official": "Cursor official",
+           "x": "X (manual queue)", "manual": "Added manually"},
+    "ko": {"github": "GitHub", "awesome": "Awesome 리스트", "hackernews": "HackerNews",
+           "claude-official": "Claude 공식", "cursor-official": "Cursor 공식",
+           "x": "X (수동 큐)", "manual": "직접 추가"},
+}
+
+# category는 DB에 한국어 문자열이 그대로 저장되어 있어 필터 값은 바꾸지 않는다.
+# 영어 화면에서만 이 매핑으로 표시 라벨을 바꿔치기한다.
+CATEGORY_LABELS_EN = {
+    "문서·오피스": "Docs & Office",
+    "프론트엔드": "Frontend",
+    "백엔드·API": "Backend & API",
+    "UI·디자인": "UI & Design",
+    "마케팅·콘텐츠": "Marketing & Content",
+    "데이터·분석": "Data & Analytics",
+    "데브옵스·배포": "DevOps & Deploy",
+    "테스트·품질": "Testing & QA",
+    "보안": "Security",
+    "개발 워크플로": "Dev Workflow",
+    "AI·에이전트": "AI & Agents",
+    "생산성·자동화": "Productivity & Automation",
+    "기타": "Other",
+}
+
+
+def category_label(category, lang):
+    if not category:
+        return ""
+    if lang == "en":
+        return CATEGORY_LABELS_EN.get(category, category)
+    return category
+
+
+# ---------- 대시보드 UI 문자열 (Jinja + JS 공용) ----------
+
+T = {
+    "en": {
+        "app.title": "VAAL — Personal Command Archiver & Launcher",
+        "header.launcher": "Launcher",
+        "header.search_placeholder": "Search — name, purpose, tag, repo…",
+        "sort.trend": "Trending", "sort.recent": "Newest",
+        "sort.rating": "Top rated", "sort.popular": "Most stars",
+        "sort.usage": "Most used by me",
+        "nav.dashboard": "Dashboard", "nav.report": "Report",
+        "nav.queue": "Link queue", "nav.settings": "Settings",
+
+        "sidebar.type": "Type", "sidebar.category": "Category",
+        "sidebar.all": "All", "sidebar.target_tool": "Target tool",
+        "sidebar.filter": "Filter", "sidebar.filter_favorite": "♥ Favorites",
+        "sidebar.filter_rated": "Rated", "sidebar.filter_unrated": "Not rated",
+        "sidebar.filter_official": "Official only", "sidebar.filter_recommended": "Recommended",
+        "sidebar.source": "Source",
+
+        "toolbar.collect_now": "Run collection now",
+        "toolbar.open_archive_dir": "Open archive folder",
+        "empty.no_assets": "No assets yet. Click ‘Run collection now’ to get started.",
+
+        "report.top_used": "Top 5 this week", "report.rising": "🔥 Trending assets",
+        "report.by_category": "By category", "report.recent_runs": "Recent pipeline runs",
+        "report.stat_total": "Total assets", "report.stat_archived": "Original archived",
+        "report.stat_rated": "Rated", "report.stat_week_new": "New this week",
+        "report.stat_week_used": "Used this week",
+        "report.no_usage_history": "No usage history yet",
+        "report.no_rising": "Nothing trending right now",
+        "report.no_categorized": "No categorized assets",
+        "report.no_runs": "No runs yet",
+
+        "queue.title": "Manual link queue — drop assets found on X or a blog",
+        "queue.desc": "A stand-in for X's API. Links become assets on the next collection run.",
+        "queue.url_placeholder": "https://github.com/... or a post URL",
+        "queue.note_placeholder": "Note (what it is, why you're saving it)",
+        "queue.add_button": "Add to queue", "queue.empty": "Queue is empty",
+
+        "settings.pipeline": "Pipeline", "settings.run_all": "Run all",
+        "settings.collect_only": "Collect only", "settings.archive_only": "Archive only",
+        "settings.ai_only": "AI summary only", "settings.trends_index": "Trends + index",
+        "settings.use_ai": "Use AI (claude -p)", "settings.waiting": "Waiting…",
+        "settings.collect_settings": "Collection settings",
+        "settings.github_queries": "GitHub search queries (one per line)",
+        "settings.awesome_lists": "Awesome-list repos",
+        "settings.official_repos": "Official repos", "settings.min_stars": "Minimum stars",
+        "settings.trend_weights": "Trend weights (auto-normalized if they don't sum to 1)",
+        "settings.w_star_growth": "Star growth rate", "settings.w_social": "Social buzz",
+        "settings.w_official_update": "Official update frequency",
+        "settings.w_internal_usage": "Internal usage", "settings.w_recency": "Recency",
+        "settings.save": "Save settings", "settings.saved": "Saved",
+
+        "detail.close": "✕ Close", "detail.type_target": "Type / target",
+        "detail.source": "Source", "detail.repo": "Repository",
+        "detail.license": "License", "detail.license_unknown": "Unknown — check the source",
+        "detail.collected": "Collected", "detail.trend": "trend",
+        "detail.trend_comment": "Trend comment", "detail.purpose": "Purpose",
+        "detail.purpose_pending": "(AI summary pending)",
+        "detail.usage": "How to use", "detail.args": "Arguments",
+        "detail.required": "required", "detail.optional": "optional",
+        "detail.run_now": "Run it now", "detail.terminal": "Terminal",
+        "detail.claude_code": "Claude Code", "detail.install": "Install",
+        "detail.cursor_apply": "Apply in Cursor", "detail.copy": "Copy",
+        "detail.copied": "Copied!", "detail.my_rating": "My rating",
+        "detail.review_placeholder": "Review — when/how you used it, anything to watch out for",
+        "detail.save_review": "Save review", "detail.favorite_add": "♡ Favorite",
+        "detail.favorite_remove": "♥ Unfavorite",
+        "detail.use_ai_draft": "Use AI draft", "detail.ai_review_draft": "AI review draft",
+        "detail.archive": "Archive", "detail.archived_at": "Original stored at:",
+        "detail.archive_failed": "Could not fetch the original (link only)",
+        "detail.archive_pending": "Archiving pending",
+        "detail.open_folder": "Open folder", "detail.original_preview": "Original preview",
+        "detail.preview_gated": "License isn't confirmed, so the original preview is hidden.",
+        "detail.view_source": "Check the source directly",
+        "detail.official_badge": "Official",
+        "card.desc_pending": "(summary pending)",
+        "pipeline.running": "Pipeline running…",
+        "pipeline.done": "Done — found {found} · new {added} · archived {archived} · AI {ai}",
+        "card.exec_count": "used {n}×",
+        "card.aria_detail": "View details for",
+
+        "api.readonly": "This is a read-only public deployment",
+        "api.not_found": "Asset not found",
+        "api.rating_invalid": "Rating must be an integer from 1 to 5",
+        "api.no_changes": "Nothing to update",
+        "api.url_required": "Enter an http(s) URL",
+        "api.already_running": "Already running",
+        "api.bad_path": "Invalid path",
+        "api.email_invalid": "Enter a valid email address",
+    },
+    "ko": {
+        "app.title": "VAAL — 바이브코딩 자산 아카이버 & 런처",
+        "header.launcher": "런처",
+        "header.search_placeholder": "검색 — 이름·용도·태그·저장소…",
+        "sort.trend": "트렌드순", "sort.recent": "최신순",
+        "sort.rating": "평점순", "sort.popular": "외부 인기순",
+        "sort.usage": "내 사용순",
+        "nav.dashboard": "대시보드", "nav.report": "리포트",
+        "nav.queue": "링크 큐", "nav.settings": "설정",
+
+        "sidebar.type": "타입", "sidebar.category": "분야",
+        "sidebar.all": "전체", "sidebar.target_tool": "대상 도구",
+        "sidebar.filter": "필터", "sidebar.filter_favorite": "♥ 즐겨찾기",
+        "sidebar.filter_rated": "평가한 자산", "sidebar.filter_unrated": "평가 안 한 자산",
+        "sidebar.filter_official": "공식만", "sidebar.filter_recommended": "추천",
+        "sidebar.source": "소스",
+
+        "toolbar.collect_now": "지금 수집 실행",
+        "toolbar.open_archive_dir": "아카이브 폴더 열기",
+        "empty.no_assets": "자산이 없습니다. '지금 수집 실행'으로 시작하세요.",
+
+        "report.top_used": "이번 주 실행 Top 5", "report.rising": "🔥 급상승 자산",
+        "report.by_category": "분야별 현황", "report.recent_runs": "최근 파이프라인 실행",
+        "report.stat_total": "총 자산", "report.stat_archived": "원본 보관",
+        "report.stat_rated": "평가 완료", "report.stat_week_new": "이번 주 신규",
+        "report.stat_week_used": "이번 주 실행",
+        "report.no_usage_history": "아직 실행 이력이 없습니다",
+        "report.no_rising": "급상승 자산 없음",
+        "report.no_categorized": "분류된 자산 없음",
+        "report.no_runs": "실행 기록 없음",
+
+        "queue.title": "수동 링크 큐 — X·블로그에서 발견한 자산 넣기",
+        "queue.desc": "X API 대신 쓰는 입력함입니다. 다음 수집 실행 때 자동으로 자산으로 변환됩니다.",
+        "queue.url_placeholder": "https://github.com/... 또는 게시물 URL",
+        "queue.note_placeholder": "메모 (무엇인지, 왜 저장하는지)",
+        "queue.add_button": "큐에 추가", "queue.empty": "큐가 비어 있습니다",
+
+        "settings.pipeline": "파이프라인", "settings.run_all": "전체 실행",
+        "settings.collect_only": "수집만", "settings.archive_only": "아카이브만",
+        "settings.ai_only": "AI 요약만", "settings.trends_index": "트렌드+인덱스",
+        "settings.use_ai": "AI 사용 (claude -p)", "settings.waiting": "대기 중…",
+        "settings.collect_settings": "수집 설정",
+        "settings.github_queries": "GitHub 검색 쿼리 (한 줄에 하나)",
+        "settings.awesome_lists": "Awesome 리스트 저장소",
+        "settings.official_repos": "공식 저장소", "settings.min_stars": "최소 star 수",
+        "settings.trend_weights": "트렌드 가중치 (합이 1이 아니어도 자동 정규화)",
+        "settings.w_star_growth": "star 증가율", "settings.w_social": "소셜 반응",
+        "settings.w_official_update": "공식 업데이트", "settings.w_internal_usage": "내부 사용",
+        "settings.w_recency": "최근성",
+        "settings.save": "설정 저장", "settings.saved": "저장됨",
+
+        "detail.close": "✕ 닫기", "detail.type_target": "타입 / 대상",
+        "detail.source": "출처", "detail.repo": "저장소",
+        "detail.license": "라이선스", "detail.license_unknown": "미상 — 원본 확인 필요",
+        "detail.collected": "수집일", "detail.trend": "트렌드",
+        "detail.trend_comment": "트렌드 코멘트", "detail.purpose": "용도",
+        "detail.purpose_pending": "(AI 요약 대기 중)",
+        "detail.usage": "사용법", "detail.args": "인자 입력",
+        "detail.required": "필수", "detail.optional": "선택",
+        "detail.run_now": "즉시 실행", "detail.terminal": "터미널",
+        "detail.claude_code": "Claude Code", "detail.install": "설치",
+        "detail.cursor_apply": "Cursor 적용", "detail.copy": "복사",
+        "detail.copied": "복사됨!", "detail.my_rating": "내 평가",
+        "detail.review_placeholder": "후기 — 언제/어떻게 써봤는지, 주의할 점",
+        "detail.save_review": "평가 저장", "detail.favorite_add": "♡ 즐겨찾기",
+        "detail.favorite_remove": "♥ 즐겨찾기 해제",
+        "detail.use_ai_draft": "AI 초안 불러오기", "detail.ai_review_draft": "AI 평가 초안",
+        "detail.archive": "아카이브", "detail.archived_at": "원본 보관됨:",
+        "detail.archive_failed": "원본 확보 실패 (링크만 보관)",
+        "detail.archive_pending": "아카이브 대기 중",
+        "detail.open_folder": "폴더 열기", "detail.original_preview": "원문 미리보기",
+        "detail.preview_gated": "라이선스가 확인되지 않아 원문 미리보기를 표시하지 않습니다.",
+        "detail.view_source": "출처에서 직접 확인",
+        "detail.official_badge": "공식",
+        "card.desc_pending": "(요약 대기)",
+        "pipeline.running": "파이프라인 실행 중…",
+        "pipeline.done": "완료 — 발견 {found} · 신규 {added} · 보관 {archived} · AI {ai}",
+        "card.exec_count": "실행 {n}회",
+        "card.aria_detail": "상세 보기:",
+
+        "api.readonly": "열람 전용 모드입니다",
+        "api.not_found": "없는 자산",
+        "api.rating_invalid": "별점은 1~5 정수",
+        "api.no_changes": "변경 내용 없음",
+        "api.url_required": "http(s) URL을 입력하세요",
+        "api.already_running": "이미 실행 중",
+        "api.bad_path": "잘못된 경로",
+        "api.email_invalid": "올바른 이메일 주소를 입력하세요",
+    },
+}
+
+
+def resolve_locale(code):
+    return code if code in LOCALES else DEFAULT_LOCALE

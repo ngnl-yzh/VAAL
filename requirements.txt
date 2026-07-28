@@ -1,0 +1,3 @@
+flask>=3.0
+requests>=2.31
+gunicorn>=22.0  # 프로덕션 WSGI 서버 — 로컬 개발(python app.py)에는 필요 없음, 배포 호스트(Linux)에서만 사용
