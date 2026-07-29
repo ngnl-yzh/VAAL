@@ -73,5 +73,4 @@ schtasks /Create /TN WeeklyVAAL /SC WEEKLY /D WED /ST 09:30 /TR "powershell -NoP
 | `VAAL_READONLY` | 0 | 1이면 열람 전용. 로그인/관리자 시스템이 생긴 뒤로는 보통 불필요(관리자 본인도 막힘) |
 | `SECRET_KEY` | (안전하지 않은 기본값) | 세션 서명 키 — 배포 시 반드시 진짜 랜덤값 지정 |
 | `VAAL_ADMIN_EMAILS` | 없음 | 관리자로 인정할 이메일(콤마 구분). 로컬 개발 시 `admin_emails.txt`(한 줄에 하나)로도 지정 가능 |
-| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` | 없음 | 회원가입 인증 메일 실제 발송용. 없으면 서버 로그에 인증 링크만 출력 |
 | `CRON_SECRET` | 없음 | 설정하면 `Authorization: Bearer <값>` 헤더로 로그인 없이 관리자 API(파이프라인 실행 등) 호출 가능 — Hermes 등 외부 스케줄러가 배포된 사이트를 직접 트리거할 때 사용 |

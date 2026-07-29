@@ -28,19 +28,12 @@ button{width:100%;margin-top:22px;font-family:inherit;cursor:pointer;border:none
 button:hover{background:#79b8ff}
 .error{background:rgba(248,81,73,.12);border:1px solid var(--hot);color:var(--hot);
   border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:8px}
-.notice{background:rgba(63,185,80,.12);border:1px solid var(--accent2);color:var(--accent2);
-  border-radius:8px;padding:14px;font-size:13px;line-height:1.6}
 .switch{margin-top:18px;font-size:12.5px;color:var(--dim);text-align:center}
 </style>
 </head>
 <body>
 <header><h1><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" class="logo-icon"> Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1></header>
 <main>
-{% if sent_to %}
-  <h2>{{ t('auth.signup_title') }}</h2>
-  <div class="notice">{{ t('auth.check_email_notice').replace('{email}', sent_to) }}</div>
-  <p class="switch"><a href="/login">{{ t('auth.login') }} →</a></p>
-{% else %}
   <h2>{{ t('auth.signup_title') }}</h2>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <form method="post">
@@ -53,7 +46,6 @@ button:hover{background:#79b8ff}
     <button type="submit">{{ t('auth.signup_button') }}</button>
   </form>
   <p class="switch">{{ t('auth.have_account') }} <a href="/login">{{ t('auth.login') }}</a></p>
-{% endif %}
 </main>
 </body>
 </html>

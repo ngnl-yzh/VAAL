@@ -12,6 +12,9 @@ ARCHIVE_DIR = os.environ.get("VAAL_ARCHIVE_DIR") or os.path.join(BASE_DIR, "vaa-
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 READONLY = os.environ.get("VAAL_READONLY") == "1"
+# Render는 모든 서비스에 RENDER=true를 자동 주입한다 — 이걸로 로컬/배포를 구분해서
+# "탐색기로 폴더 열기"처럼 로컬 GUI가 있어야만 의미 있는 기능을 배포 환경에서 숨긴다.
+IS_LOCAL = os.environ.get("RENDER") is None
 # PORT: 대부분의 배포 플랫폼(Render/Railway 등)이 표준 PORT를 주입한다.
 # VAAL_PORT는 로컬 개발용 커스텀 포트로 우선 적용된다.
 PORT = int(os.environ.get("VAAL_PORT") or os.environ.get("PORT") or "5240")

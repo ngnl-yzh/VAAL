@@ -23,7 +23,12 @@ header h1 span{color:var(--accent)}
 header nav{margin-left:auto}
 main{max-width:860px;margin:0 auto;padding:40px 24px 64px}
 h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
-.owner-note{color:var(--dim);font-size:12.5px;margin-bottom:28px}
+.owner-note{color:var(--dim);font-size:12.5px;margin-bottom:8px}
+.votes{display:flex;align-items:center;gap:8px;margin-bottom:28px}
+.votes button{padding:6px 11px;font-size:12.5px}
+.votes button.active{background:var(--accent);color:#0d1117;font-weight:600}
+.votes .n{color:var(--dim);font-size:12.5px}
+.votes .hint{font-size:12px;color:var(--dim)}
 .item{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   padding:16px;margin-bottom:12px}
 .item .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -57,6 +62,21 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
   <p class="owner-note">🔒 {{ t('coll.private_owner_note') }} <a href="/collections">{{ t('coll.my_collections_title') }}</a></p>
   {% elif is_owner %}
   <p class="owner-note"><a href="/collections">← {{ t('coll.my_collections_title') }}</a></p>
+  {% endif %}
+
+  {% if coll.is_shared %}
+  <div class="votes">
+    {% if is_owner %}
+    <span class="n">👍 {{ votes.likes }} · 👎 {{ votes.dislikes }}</span>
+    <span class="hint">({{ t('coll.own_collection') }})</span>
+    {% elif user %}
+    <button class="votebtn {{ 'active' if my_vote == 1 else '' }}" data-vote="1">👍 <span class="n like-n">{{ votes.likes }}</span></button>
+    <button class="votebtn {{ 'active' if my_vote == -1 else '' }}" data-vote="-1">👎 <span class="n dislike-n">{{ votes.dislikes }}</span></button>
+    {% else %}
+    <span class="n">👍 {{ votes.likes }} · 👎 {{ votes.dislikes }}</span>
+    <a class="hint" href="/login?next=/c/{{ coll.share_slug }}">{{ t('coll.login_to_vote') }}</a>
+    {% endif %}
+  </div>
   {% endif %}
 
   {% if not items %}
@@ -112,6 +132,26 @@ document.querySelectorAll('[data-remove]').forEach(btn => {
     const assetId = btn.dataset.remove;
     const r = await fetch(`/api/collections/${collId}/items/${assetId}`, {method: 'DELETE'});
     if (r.ok) btn.closest('.item').remove();
+  });
+});
+
+document.querySelectorAll('.votebtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const clickedVote = parseInt(btn.dataset.vote, 10);
+    const wasActive = btn.classList.contains('active');
+    const vote = wasActive ? 0 : clickedVote;
+    const r = await fetch(`/api/collections/${collId}/vote`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({vote}),
+    });
+    if (!r.ok) { const d = await r.json(); alert(d.error || 'Error'); return; }
+    const d = await r.json();
+    document.querySelector('.like-n').textContent = d.likes;
+    document.querySelector('.dislike-n').textContent = d.dislikes;
+    document.querySelectorAll('.votebtn').forEach(b => b.classList.remove('active'));
+    if (d.my_vote !== 0) {
+      document.querySelector(`.votebtn[data-vote="${d.my_vote}"]`).classList.add('active');
+    }
   });
 });
 </script>

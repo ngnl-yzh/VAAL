@@ -14,7 +14,7 @@ import auth
 import i18n
 import pipeline
 import trends
-from config import ARCHIVE_DIR, CATEGORIES, PORT, PUBLIC_PREVIEW_LIMIT, READONLY, TYPES
+from config import ARCHIVE_DIR, CATEGORIES, IS_LOCAL, PORT, PUBLIC_PREVIEW_LIMIT, READONLY, TYPES
 from db import (asset_dict, connect, get_settings, init_db, now_iso,
                 set_setting)
 
@@ -134,7 +134,7 @@ def admin_required(view):
 @app.route("/app")
 def index():
     return render_template("index.html", types=TYPES, categories=CATEGORIES,
-                           readonly=READONLY)
+                           readonly=READONLY, is_local=IS_LOCAL)
 
 
 @app.route("/")
@@ -205,15 +205,15 @@ def signup():
             if db.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
                 error = _e("auth.err_email_taken")
             else:
-                token = auth.new_token()
-                db.execute(
-                    "INSERT INTO users (email, password_hash, verify_token, verify_sent_at, created_at) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (email, auth.hash_password(pw), token, now_iso(), now_iso()))
+                cur = db.execute(
+                    "INSERT INTO users (email, password_hash, email_verified, created_at) "
+                    "VALUES (?, ?, 1, ?)",
+                    (email, auth.hash_password(pw), now_iso()))
                 db.commit()
-                verify_url = url_for("verify_email", token=token, _external=True)
-                auth.send_verification_email(email, verify_url, log=print)
-                return render_template("signup.html", sent_to=email)
+                session.clear()
+                session["user_id"] = cur.lastrowid
+                session.permanent = True
+                return redirect(request.args.get("next") or "/app")
     return render_template("signup.html", error=error)
 
 
@@ -226,8 +226,6 @@ def login():
         row = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         if not row or not auth.verify_password(pw, row["password_hash"]):
             error = _e("auth.err_invalid_credentials")
-        elif not row["email_verified"]:
-            error = _e("auth.err_not_verified")
         else:
             session.clear()
             session["user_id"] = row["id"]
@@ -240,35 +238,6 @@ def login():
 def logout():
     session.clear()
     return redirect(request.referrer or "/")
-
-
-@app.route("/verify/<token>")
-def verify_email(token):
-    db = get_db()
-    row = db.execute("SELECT * FROM users WHERE verify_token = ? AND verify_token != ''",
-                     (token,)).fetchone()
-    if row:
-        db.execute("UPDATE users SET email_verified = 1, verify_token = '' WHERE id = ?",
-                  (row["id"],))
-        db.commit()
-    return render_template("verify.html", ok=bool(row))
-
-
-@app.route("/api/admin/verify-user", methods=["POST"])
-@admin_required
-def api_admin_verify_user():
-    """SMTP 미설정 배포에서 이메일 링크 없이 계정을 강제 인증한다.
-    CRON_SECRET 또는 관리자 세션으로만 호출 가능."""
-    data = request.get_json(force=True, silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    db = get_db()
-    row = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if not row:
-        return jsonify({"error": _e("api.not_found")}), 404
-    db.execute("UPDATE users SET email_verified = 1, verify_token = '' WHERE id = ?",
-              (row["id"],))
-    db.commit()
-    return jsonify({"ok": True, "email": email})
 
 
 
@@ -604,6 +573,9 @@ def api_settings():
 def api_open_archive():
     if (err := guard_readonly()):
         return err
+    if not IS_LOCAL:
+        # 배포 서버엔 GUI가 없어 탐색기를 띄울 수 없다.
+        return jsonify({"error": _e("api.local_only")}), 400
     data = request.get_json(force=True, silent=True) or {}
     sub = data.get("dir") or ""
     # 경로 탈출 방지: 아카이브 루트 아래만 허용
@@ -640,6 +612,22 @@ def _owned_collection(coll_id, user_id):
                             (coll_id, user_id)).fetchone()
 
 
+def _vote_counts(db, coll_id):
+    row = db.execute(
+        "SELECT SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS likes, "
+        "       SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS dislikes "
+        "FROM collection_votes WHERE collection_id = ?", (coll_id,)).fetchone()
+    return {"likes": row["likes"] or 0, "dislikes": row["dislikes"] or 0}
+
+
+def _my_vote(db, coll_id, user_id):
+    if not user_id:
+        return 0
+    row = db.execute("SELECT vote FROM collection_votes WHERE collection_id = ? AND user_id = ?",
+                     (coll_id, user_id)).fetchone()
+    return row["vote"] if row else 0
+
+
 @app.route("/api/collections", methods=["GET", "POST"])
 @login_required
 def api_collections():
@@ -674,6 +662,34 @@ def api_collection_share(coll_id):
     db.commit()
     row = db.execute("SELECT * FROM collections WHERE id = ?", (coll_id,)).fetchone()
     return jsonify(dict(row))
+
+
+@app.route("/api/collections/<int:coll_id>/vote", methods=["POST"])
+@login_required
+def api_collection_vote(coll_id):
+    u = current_user()
+    db = get_db()
+    coll = db.execute("SELECT * FROM collections WHERE id = ? AND is_shared = 1",
+                      (coll_id,)).fetchone()
+    if not coll:
+        return jsonify({"error": _e("api.not_found")}), 404
+    if coll["user_id"] == u["id"]:
+        return jsonify({"error": _e("api.no_self_vote")}), 400
+    data = request.get_json(force=True, silent=True) or {}
+    vote = data.get("vote")
+    if vote not in (1, -1, 0):
+        return jsonify({"error": _e("api.bad_vote")}), 400
+    if vote == 0:
+        db.execute("DELETE FROM collection_votes WHERE collection_id = ? AND user_id = ?",
+                  (coll_id, u["id"]))
+    else:
+        db.execute(
+            "INSERT INTO collection_votes (collection_id, user_id, vote, created_at) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(collection_id, user_id) "
+            "DO UPDATE SET vote = excluded.vote, created_at = excluded.created_at",
+            (coll_id, u["id"], vote, now_iso()))
+    db.commit()
+    return jsonify({"ok": True, "my_vote": vote, **_vote_counts(db, coll_id)})
 
 
 @app.route("/api/collections/<int:coll_id>/items", methods=["POST"])
@@ -728,8 +744,44 @@ def collection_public(slug):
         """SELECT a.* FROM collection_items ci JOIN assets a ON a.id = ci.asset_id
            WHERE ci.collection_id = ? ORDER BY ci.added_at DESC""",
         (coll["id"],)).fetchall()
+    votes = _vote_counts(db, coll["id"])
+    my_vote = _my_vote(db, coll["id"], u["id"] if u else None)
     return render_template("collection_public.html", coll=dict(coll),
-                           items=[asset_dict(r) for r in items], is_owner=is_owner)
+                           items=[asset_dict(r) for r in items], is_owner=is_owner,
+                           votes=votes, my_vote=my_vote)
+
+
+SHARED_SORTS = {"recent": "c.created_at DESC", "popular": "likes DESC, c.created_at DESC"}
+
+
+@app.route("/shared")
+def shared_gallery():
+    db = get_db()
+    sort = SHARED_SORTS.get(request.args.get("sort") or "recent", SHARED_SORTS["recent"])
+    rows = db.execute(
+        f"""SELECT c.*, COUNT(DISTINCT ci.id) AS item_count,
+                   SUM(CASE WHEN cv.vote = 1 THEN 1 ELSE 0 END) AS likes,
+                   SUM(CASE WHEN cv.vote = -1 THEN 1 ELSE 0 END) AS dislikes
+            FROM collections c
+            LEFT JOIN collection_items ci ON ci.collection_id = c.id
+            LEFT JOIN collection_votes cv ON cv.collection_id = c.id
+            WHERE c.is_shared = 1
+            GROUP BY c.id ORDER BY {sort}""").fetchall()
+    u = current_user()
+    my_votes = {}
+    if u:
+        my_votes = {r["collection_id"]: r["vote"] for r in db.execute(
+            "SELECT collection_id, vote FROM collection_votes WHERE user_id = ?", (u["id"],))}
+    collections = []
+    for r in rows:
+        d = dict(r)
+        d["likes"] = d["likes"] or 0
+        d["dislikes"] = d["dislikes"] or 0
+        d["my_vote"] = my_votes.get(r["id"], 0)
+        d["is_owner"] = bool(u and u["id"] == r["user_id"])
+        collections.append(d)
+    return render_template("shared_gallery.html", collections=collections,
+                           sort=request.args.get("sort") or "recent")
 
 
 init_db()

@@ -50,7 +50,10 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
 <body>
 <header>
   <h1><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" class="logo-icon"> Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
-  <nav><a href="/app">{{ 'Browse the archive' if lang == 'en' else '아카이브 둘러보기' }}</a></nav>
+  <nav>
+    <a href="/app">{{ 'Browse the archive' if lang == 'en' else '아카이브 둘러보기' }}</a>
+    <a href="/shared" style="margin-left:14px">{{ t('shared.nav') }}</a>
+  </nav>
 </header>
 <main>
   <h2>{{ t('coll.my_collections_title') }}</h2>

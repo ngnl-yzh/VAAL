@@ -155,6 +155,19 @@ CREATE TABLE IF NOT EXISTS collection_items (
 );
 CREATE INDEX IF NOT EXISTS idx_collection_items ON collection_items(collection_id);
 
+-- 공유 모음집에 대한 좋아요/싫어요 (본인 것엔 투표 불가, 로그인 필요)
+CREATE TABLE IF NOT EXISTS collection_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    collection_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    vote INTEGER NOT NULL,   -- 1 = 좋아요, -1 = 싫어요
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(collection_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_collection_votes ON collection_votes(collection_id);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL

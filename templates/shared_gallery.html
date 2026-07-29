@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('shared.title') }} — Runcast</title>
+<style>
+{% include "_tokens.css.html" %}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
+  font-family:'Segoe UI','Malgun Gothic',sans-serif;font-size:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:6px;
+  background:var(--panel2);color:var(--text);padding:6px 11px;font-size:12.5px;
+  transition:background-color .12s ease}
+button:hover{background:var(--hover-panel)}
+button.active{background:var(--accent);color:#0d1117;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line)}
+header h1{font-size:17px;display:flex;align-items:center;gap:8px}
+header h1 .logo-icon{width:24px;height:24px;border-radius:6px;vertical-align:middle}
+header h1 a{color:var(--text)}
+header h1 span{color:var(--accent)}
+header nav{margin-left:auto}
+main{max-width:820px;margin:0 auto;padding:40px 24px 64px}
+h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
+.sub{color:var(--dim);font-size:13.5px;margin-bottom:22px}
+.sorttabs{display:flex;gap:8px;margin-bottom:22px}
+.list{display:grid;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px}
+.card .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.card .name{font-weight:600;font-size:15px}
+.card .count{color:var(--dim);font-size:12.5px;margin-left:auto}
+.card .desc{color:var(--dim);font-size:12.5px;margin-bottom:10px}
+.votes{display:flex;align-items:center;gap:8px}
+.votes .n{font-size:12.5px;color:var(--dim)}
+.votes .hint{font-size:12px;color:var(--dim)}
+.empty{color:var(--dim);padding:40px 0;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" class="logo-icon"> Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
+  <nav><a href="/app">{{ 'Browse the archive' if lang == 'en' else '아카이브 둘러보기' }}</a></nav>
+</header>
+<main>
+  <h2>{{ t('shared.title') }}</h2>
+  <p class="sub">{{ t('shared.subtitle') }}</p>
+
+  <div class="sorttabs">
+    <a href="/shared?sort=recent"><button class="{{ 'active' if sort == 'recent' else '' }}">{{ t('shared.sort_recent') }}</button></a>
+    <a href="/shared?sort=popular"><button class="{{ 'active' if sort == 'popular' else '' }}">{{ t('shared.sort_popular') }}</button></a>
+  </div>
+
+  <div class="list">
+    {% if not collections %}
+    <div class="empty">{{ t('shared.empty') }}</div>
+    {% endif %}
+    {% for c in collections %}
+    <div class="card" data-id="{{ c.id }}">
+      <div class="top">
+        <span class="name">{{ c.name }}</span>
+        <span class="count">{{ t('coll.item_count').replace('{n}', c.item_count|string) }}</span>
+        <a href="/c/{{ c.share_slug }}">{{ t('shared.view') }}</a>
+      </div>
+      {% if c.description %}<div class="desc">{{ c.description }}</div>{% endif %}
+      <div class="votes">
+        {% if c.is_owner %}
+        <span class="n">👍 {{ c.likes }} · 👎 {{ c.dislikes }}</span>
+        <span class="hint">({{ t('coll.own_collection') }})</span>
+        {% elif user %}
+        <button class="votebtn {{ 'active' if c.my_vote == 1 else '' }}" data-id="{{ c.id }}" data-vote="1">👍 <span class="n like-n">{{ c.likes }}</span></button>
+        <button class="votebtn {{ 'active' if c.my_vote == -1 else '' }}" data-id="{{ c.id }}" data-vote="-1">👎 <span class="n dislike-n">{{ c.dislikes }}</span></button>
+        {% else %}
+        <span class="n">👍 {{ c.likes }} · 👎 {{ c.dislikes }}</span>
+        <a class="hint" href="/login?next=/shared">{{ t('coll.login_to_vote') }}</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</main>
+
+<script>
+"use strict";
+document.querySelectorAll('.votebtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.card');
+    const id = btn.dataset.id;
+    const clickedVote = parseInt(btn.dataset.vote, 10);
+    const wasActive = btn.classList.contains('active');
+    const vote = wasActive ? 0 : clickedVote;
+    const r = await fetch(`/api/collections/${id}/vote`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({vote}),
+    });
+    if (!r.ok) { const d = await r.json(); alert(d.error || 'Error'); return; }
+    const d = await r.json();
+    card.querySelector('.like-n').textContent = d.likes;
+    card.querySelector('.dislike-n').textContent = d.dislikes;
+    card.querySelectorAll('.votebtn').forEach(b => b.classList.remove('active'));
+    if (d.my_vote !== 0) {
+      card.querySelector(`.votebtn[data-vote="${d.my_vote}"]`).classList.add('active');
+    }
+  });
+});
+</script>
+</body>
+</html>

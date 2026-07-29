@@ -163,6 +163,7 @@ pre.preview{background:#0a0d12;border:1px solid var(--line);border-radius:8px;
     <a href="/lang/ko?next=/app" class="{{ 'active' if lang == 'ko' else '' }}">KO</a>
   </div>
   <div class="authbox">
+    <a href="/shared">{{ t('shared.nav') }}</a>
     {% if user %}
       <a href="/collections">{{ t('auth.my_collections') }}</a>
       <span class="who">{{ user.email }}</span>
@@ -215,7 +216,7 @@ pre.preview{background:#0a0d12;border:1px solid var(--line);border-radius:8px;
       <span class="total" id="total"></span>
       {% if is_admin %}
       <button id="btnCollect" class="primary">{{ t('toolbar.collect_now') }}</button>
-      <button id="btnArchiveDir">{{ t('toolbar.open_archive_dir') }}</button>
+      {% if is_local %}<button id="btnArchiveDir">{{ t('toolbar.open_archive_dir') }}</button>{% endif %}
       <span id="pipeHint" style="color:var(--dim);font-size:12px"></span>
       {% endif %}
     </div>
