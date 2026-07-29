@@ -3,7 +3,9 @@
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "vaal.db")
+# 배포 시 영구 디스크 마운트 경로(예: /data/vaal.db)를 가리키도록 오버라이드 가능.
+# 안 정해주면 기존처럼 프로젝트 폴더 안에 저장(로컬 개발용, 재배포 시 초기화될 수 있음).
+DB_PATH = os.environ.get("VAAL_DB_PATH") or os.path.join(BASE_DIR, "vaal.db")
 
 # 원본 파일 아카이브 루트 (기획서 6.3)
 ARCHIVE_DIR = os.environ.get("VAAL_ARCHIVE_DIR") or os.path.join(BASE_DIR, "vaa-archive")

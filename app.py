@@ -103,9 +103,23 @@ def login_required(view):
     return wrapped
 
 
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
+
+def _cron_secret_ok():
+    """Hermes 같은 외부 스케줄러가 브라우저 세션 없이 관리자 API를 호출할 수 있게 하는
+    공유 비밀키. CRON_SECRET이 설정 안 돼 있으면(기본값) 이 경로는 항상 막힌다."""
+    if not CRON_SECRET:
+        return False
+    given = request.headers.get("Authorization", "")
+    return given == f"Bearer {CRON_SECRET}"
+
+
 def admin_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
+        if _cron_secret_ok():
+            return view(*args, **kwargs)
         u = current_user()
         if not u or not auth.is_admin_email(u["email"]):
             if request.path.startswith("/api/"):
