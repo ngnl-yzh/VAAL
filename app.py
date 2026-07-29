@@ -146,12 +146,16 @@ def landing():
     official = db.execute("SELECT COUNT(*) AS n FROM assets "
                           "WHERE is_official = 1").fetchone()["n"]
     # 데모용 실행 예시 — 공식·허용 라이선스·실행 템플릿이 실제로 있는 자산 중 트렌드 1위
-    demo = db.execute(
+    demo_row = db.execute(
         "SELECT title, type, description, terminal_template, claude_code_template, "
+        "       terminal_template_en, claude_code_template_en, "
         "       source_url, repo_full_name, license "
         "FROM assets WHERE is_official = 1 AND terminal_template != '' "
         "AND claude_code_template != '' ORDER BY trend_score DESC LIMIT 1"
     ).fetchone()
+    demo = dict(demo_row) if demo_row else None
+    if demo:
+        _localize_templates(demo)
     return render_template("landing.html", total=total, archived=archived,
                            official=official, demo=demo)
 
@@ -301,7 +305,9 @@ def api_assets():
     sort = SORTS.get(request.args.get("sort") or "trend", SORTS["trend"])
     flt = request.args.get("filter") or ""
 
-    sql = ("SELECT * FROM assets WHERE 1=1")
+    sql = ("SELECT * FROM assets WHERE "
+           "(terminal_template != '' OR claude_code_template != '' "
+           " OR cursor_apply_guide != '' OR install_command != '')")
     args = []
     if atype:
         sql += " AND type = ?"
@@ -351,10 +357,23 @@ def _my_favorite_ids(db, user):
             db.execute("SELECT asset_id FROM favorites WHERE user_id = ?", (user["id"],))}
 
 
+_LOCALIZABLE_TEMPLATE_FIELDS = (
+    "terminal_template", "claude_code_template", "cursor_apply_guide", "install_command")
+
+
+def _localize_templates(d):
+    """뷰어 언어에 맞는 실행 템플릿(Run it now)으로 교체하고 raw _en 키는 감춘다."""
+    for key in _LOCALIZABLE_TEMPLATE_FIELDS:
+        en_val = d.pop(f"{key}_en", None)
+        if g.lang == "en" and en_val:
+            d[key] = en_val
+    return d
+
+
 def _asset_dict_with_fav(row, fav_ids):
     d = asset_dict(row)
     d["my_favorite"] = row["id"] in fav_ids
-    return d
+    return _localize_templates(d)
 
 
 def _recommend_where():

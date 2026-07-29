@@ -140,7 +140,9 @@ def enrich_assets(con, limit=40, log=print):
                 """UPDATE assets SET
                      purpose_summary = ?, usage_summary = ?, ai_review_draft = ?,
                      args_schema = ?, terminal_template = ?, claude_code_template = ?,
-                     cursor_apply_guide = ?, install_command = ?, category = ?,
+                     cursor_apply_guide = ?, install_command = ?,
+                     terminal_template_en = ?, claude_code_template_en = ?,
+                     cursor_apply_guide_en = ?, install_command_en = ?, category = ?,
                      ai_status = 'done', updated_at = ?
                    WHERE id = ?""",
                 (str(item.get("purpose", ""))[:600],
@@ -148,7 +150,9 @@ def enrich_assets(con, limit=40, log=print):
                  str(item.get("review", ""))[:600],
                  templater.to_json(tmpl["args_schema"]),
                  tmpl["terminal_template"], tmpl["claude_code_template"],
-                 tmpl["cursor_apply_guide"], tmpl["install_command"], category,
+                 tmpl["cursor_apply_guide"], tmpl["install_command"],
+                 tmpl["terminal_template_en"], tmpl["claude_code_template_en"],
+                 tmpl["cursor_apply_guide_en"], tmpl["install_command_en"], category,
                  now_iso(), r["id"]))
             done += 1
         con.commit()
@@ -176,10 +180,16 @@ def backfill_categories(con, log=print):
 
 
 def build_templates_only(con, log=print):
-    """AI 없이 규칙 기반 템플릿만이라도 채운다 (claude CLI 부재 시 폴백)."""
+    """AI 없이 규칙 기반 템플릿만이라도 채운다 (claude CLI 부재 시 폴백).
+
+    한 번도 템플릿이 안 채워진 자산은 물론, rule/etc 타입인데 영어판(_en)만
+    누락된 기존 자산도 함께 잡아서 다시 만든다 (다국어 지원 추가 후 백필용).
+    """
     rows = con.execute(
-        "SELECT * FROM assets WHERE claude_code_template = '' "
-        "AND cursor_apply_guide = ''").fetchall()
+        "SELECT * FROM assets WHERE "
+        "(claude_code_template = '' AND cursor_apply_guide = '') "
+        "OR (type IN ('rule', 'etc') AND claude_code_template_en = '' "
+        "    AND cursor_apply_guide_en = '')").fetchall()
     count = 0
     for r in rows:
         original = archiver.read_original(r, 3000)
@@ -187,10 +197,14 @@ def build_templates_only(con, log=print):
         con.execute(
             """UPDATE assets SET args_schema = ?, terminal_template = ?,
                  claude_code_template = ?, cursor_apply_guide = ?,
-                 install_command = ?, updated_at = ? WHERE id = ?""",
+                 install_command = ?, terminal_template_en = ?,
+                 claude_code_template_en = ?, cursor_apply_guide_en = ?,
+                 install_command_en = ?, updated_at = ? WHERE id = ?""",
             (templater.to_json(tmpl["args_schema"]), tmpl["terminal_template"],
              tmpl["claude_code_template"], tmpl["cursor_apply_guide"],
-             tmpl["install_command"], now_iso(), r["id"]))
+             tmpl["install_command"], tmpl["terminal_template_en"],
+             tmpl["claude_code_template_en"], tmpl["cursor_apply_guide_en"],
+             tmpl["install_command_en"], now_iso(), r["id"]))
         count += 1
     con.commit()
     log(f"  규칙 기반 템플릿 {count}건 생성")

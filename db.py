@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS assets (
     claude_code_template TEXT DEFAULT '',
     cursor_apply_guide TEXT DEFAULT '',
     install_command TEXT DEFAULT '',
+    terminal_template_en TEXT DEFAULT '',      -- 위 네 필드의 영어판 (rule/etc만 실제로 다름)
+    claude_code_template_en TEXT DEFAULT '',
+    cursor_apply_guide_en TEXT DEFAULT '',
+    install_command_en TEXT DEFAULT '',
 
     license TEXT DEFAULT '',
     is_official INTEGER DEFAULT 0,

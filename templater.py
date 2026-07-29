@@ -66,14 +66,14 @@ def extract_args(text, fm=None, atype="etc"):
         if name and name.lower() not in seen:
             seen.add(name.lower())
             args.append({"name": name, "required": bool(m.group(1)),
-                         "description": f"{hint} 중 {name}"})
+                         "description": f'{name} (from "{hint}")'})
     if args:
         return args
 
     body = FM_RE.sub("", text or "")
     if "$ARGUMENTS" in body:
         return [{"name": "arguments", "required": False,
-                 "description": "커맨드에 그대로 전달되는 인자 전체"}]
+                 "description": "the full argument text, passed as-is to the command"}]
 
     # 스킬은 자연어로 호출되고 본문에 코드·수식이 많아(엑셀 A$2 등) 오탐이 더 해롭다.
     # 본문 추정은 커맨드에만 적용한다.
@@ -83,7 +83,7 @@ def extract_args(text, fm=None, atype="etc"):
     positional = sorted({m.group(0) for m in re.finditer(r"(?<![\w$])\$\d+", body)})
     if positional:
         return [{"name": p.lstrip("$"), "required": True,
-                 "description": f"{p} 위치 인자"} for p in positional[:4]]
+                 "description": f"{p} positional argument"} for p in positional[:4]]
 
     for m in _body_arg_tokens(body[:4000]):
         name = (m.group(1) or m.group(2) or "").strip()
@@ -120,7 +120,10 @@ def build(asset, text=""):
     """자산 하나의 실행 템플릿 묶음을 만든다.
 
     반환: dict(terminal_template, claude_code_template, cursor_apply_guide,
-              install_command, args_schema)
+              install_command, args_schema, 그리고 각 템플릿의 영어판 *_en)
+
+    slash-command류(skill/command/plugin)는 애초에 언어 중립적이라 *_en이
+    base와 동일하다. rule/etc만 자연어 문장이 섞여 있어 실제로 번역이 갈린다.
     """
     atype = asset["type"]
     repo = asset["repo_full_name"] or ""
@@ -135,46 +138,54 @@ def build(asset, text=""):
     ph = arg_placeholder(args)
 
     out = {
-        "terminal_template": "",
-        "claude_code_template": "",
-        "cursor_apply_guide": "",
-        "install_command": "",
+        "terminal_template": "", "terminal_template_en": "",
+        "claude_code_template": "", "claude_code_template_en": "",
+        "cursor_apply_guide": "", "cursor_apply_guide_en": "",
+        "install_command": "", "install_command_en": "",
         "args_schema": args,
     }
 
     if atype == "skill":
         name = guess_command_name(asset, text)
-        out["claude_code_template"] = f"/{name}{ph}"
-        out["terminal_template"] = f'claude "/{name}{ph}"'
+        out["claude_code_template"] = out["claude_code_template_en"] = f"/{name}{ph}"
+        out["terminal_template"] = out["terminal_template_en"] = f'claude "/{name}{ph}"'
         if repo and subdir:
             out["install_command"] = (
                 f"# 스킬을 개인 스킬 폴더로 설치\n"
                 f"git clone --depth 1 https://github.com/{repo}.git /tmp/{name}-src\n"
                 f"cp -r /tmp/{name}-src/{subdir} ~/.claude/skills/{name}")
+            out["install_command_en"] = (
+                f"# Install this skill into your personal skills folder\n"
+                f"git clone --depth 1 https://github.com/{repo}.git /tmp/{name}-src\n"
+                f"cp -r /tmp/{name}-src/{subdir} ~/.claude/skills/{name}")
         elif repo:
-            out["install_command"] = (
+            out["install_command"] = out["install_command_en"] = (
                 f"git clone --depth 1 https://github.com/{repo}.git "
                 f"~/.claude/skills/{name}")
 
     elif atype == "command":
         name = guess_command_name(asset, text)
-        out["claude_code_template"] = f"/{name}{ph}"
-        out["terminal_template"] = f'claude "/{name}{ph}"'
+        out["claude_code_template"] = out["claude_code_template_en"] = f"/{name}{ph}"
+        out["terminal_template"] = out["terminal_template_en"] = f'claude "/{name}{ph}"'
         if repo and path:
             out["install_command"] = (
                 f"# 커맨드 파일을 프로젝트(또는 ~/.claude)의 commands 폴더에 저장\n"
+                f"curl -fsSL https://raw.githubusercontent.com/{repo}/HEAD/{path} "
+                f"-o .claude/commands/{name}.md")
+            out["install_command_en"] = (
+                f"# Save the command file into your project's (or ~/.claude's) commands folder\n"
                 f"curl -fsSL https://raw.githubusercontent.com/{repo}/HEAD/{path} "
                 f"-o .claude/commands/{name}.md")
 
     elif atype == "plugin":
         marketplace = repo or "<owner/repo>"
         plugin_name = asset["title"]
-        out["claude_code_template"] = (
+        out["claude_code_template"] = out["claude_code_template_en"] = (
             f"/plugin marketplace add {marketplace}\n"
             f"/plugin install {plugin_name}@{marketplace.split('/')[-1]}")
-        out["terminal_template"] = (
+        out["terminal_template"] = out["terminal_template_en"] = (
             f'claude "/plugin marketplace add {marketplace}"')
-        out["install_command"] = out["claude_code_template"]
+        out["install_command"] = out["install_command_en"] = out["claude_code_template"]
 
     elif atype == "rule":
         name = asset["title"]
@@ -185,24 +196,36 @@ def build(asset, text=""):
             f"1. 원본 파일을 프로젝트 루트의 `{dest}` 로 복사합니다.\n"
             f"2. Cursor를 다시 열면 룰이 자동 적용됩니다.\n"
             f"3. 특정 대화에서만 쓰려면 채팅에서 `@{name}` 으로 참조하세요.")
+        out["cursor_apply_guide_en"] = (
+            f"1. Copy the original file to `{dest}` in your project root.\n"
+            f"2. Reopen Cursor and the rule applies automatically.\n"
+            f"3. To use it in just one chat, reference it with `@{name}`.")
         if repo and path:
-            out["install_command"] = (
+            out["install_command"] = out["install_command_en"] = (
                 f"curl -fsSL https://raw.githubusercontent.com/{repo}/HEAD/{path} "
                 f"-o {dest}")
         # 룰도 Claude Code에서 컨텍스트로 읽힐 수 있어 참고용 명령을 함께 제공
         out["claude_code_template"] = f"@{dest} 이 룰을 참고해서 작업해줘"
+        out["claude_code_template_en"] = f"@{dest} use this rule as reference for this task"
 
     else:  # etc — 문서·소식류
         if repo:
             out["terminal_template"] = (
                 f'claude "https://github.com/{repo} 이 저장소를 살펴보고 '
                 f'어떻게 쓰는지 정리해줘"')
+            out["terminal_template_en"] = (
+                f'claude "review this repo and summarize how to use it: '
+                f'https://github.com/{repo}"')
             out["claude_code_template"] = (
                 f"이 저장소를 살펴보고 사용법을 정리해줘: https://github.com/{repo}")
+            out["claude_code_template_en"] = (
+                f"Review this repo and summarize how to use it: https://github.com/{repo}")
         else:
             url = asset["source_url"]
             out["terminal_template"] = f'claude "{url} 이 문서 핵심만 정리해줘"'
+            out["terminal_template_en"] = f'claude "summarize the key points of {url}"'
             out["claude_code_template"] = f"{url} 이 문서 핵심만 정리해줘"
+            out["claude_code_template_en"] = f"Summarize the key points of {url}"
 
     return out
 
