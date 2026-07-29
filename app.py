@@ -648,6 +648,18 @@ def api_collections():
     return jsonify(dict(row))
 
 
+@app.route("/api/collections/<int:coll_id>", methods=["DELETE"])
+@login_required
+def api_collection_delete(coll_id):
+    u = current_user()
+    if not _owned_collection(coll_id, u["id"]):
+        return jsonify({"error": _e("api.not_found")}), 404
+    db = get_db()
+    db.execute("DELETE FROM collections WHERE id = ?", (coll_id,))
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/collections/<int:coll_id>/share", methods=["POST"])
 @login_required
 def api_collection_share(coll_id):

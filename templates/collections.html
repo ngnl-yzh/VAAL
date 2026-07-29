@@ -44,6 +44,7 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
 .sharebox{display:flex;gap:8px;align-items:center;margin-top:8px}
 .sharebox input{flex:1;font-size:12.5px;color:var(--dim);font-family:Consolas,monospace}
 .copyok{color:var(--accent2);font-size:12px;margin-left:6px}
+.deletebtn{color:var(--hot);background:transparent}
 .empty{color:var(--dim);padding:24px 0}
 </style>
 </head>
@@ -75,6 +76,7 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
           {{ t('coll.shared_badge') if c.is_shared else t('coll.private_badge') }}</span>
         <span class="count">{{ t('coll.item_count').replace('{n}', c.item_count|string) }}</span>
         <a href="/c/{{ c.share_slug }}">{{ t('coll.view') }} →</a>
+        <button class="deletebtn" data-id="{{ c.id }}">{{ t('coll.delete_button') }}</button>
       </div>
 
       {% if c.is_shared %}
@@ -86,8 +88,7 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
       <button class="unsharebtn" data-id="{{ c.id }}">{{ t('coll.unshare_button') }}</button>
       {% else %}
       <p class="note">{{ t('coll.private_note') }}</p>
-      <button class="sharebtn" data-id="{{ c.id }}">{{ t('coll.share_button') }}</button>
-      <div class="sharepanel" hidden>
+      <div class="sharepanel">
         <input class="descinput" placeholder="{{ t('coll.description_placeholder') }}"
                value="{{ c.description }}" maxlength="300">
         <button class="primary savebtn" data-id="{{ c.id }}">{{ t('coll.share_save') }}</button>
@@ -136,12 +137,6 @@ async function setShared(id, shared, description) {
   else { const d = await r.json(); alert(d.error || 'Error'); }
 }
 
-document.querySelectorAll('.sharebtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    btn.closest('.card').querySelector('.sharepanel').hidden = false;
-    btn.hidden = true;
-  });
-});
 document.querySelectorAll('.savebtn').forEach(btn => {
   btn.addEventListener('click', () => {
     const card = btn.closest('.card');
@@ -154,6 +149,14 @@ document.querySelectorAll('.unsharebtn').forEach(btn => {
     if (!confirm({{ t('coll.unshare_button') | tojson }} + '?')) return;
     const desc = btn.closest('.card').dataset.desc || '';
     setShared(btn.dataset.id, false, desc);
+  });
+});
+document.querySelectorAll('.deletebtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (!confirm({{ t('coll.delete_button') | tojson }} + '?')) return;
+    const r = await fetch(`/api/collections/${btn.dataset.id}`, {method: 'DELETE'});
+    if (r.ok) location.reload();
+    else { const d = await r.json(); alert(d.error || 'Error'); }
   });
 });
 </script>
