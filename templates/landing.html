@@ -59,12 +59,10 @@ main{max-width:1080px;margin:0 auto;padding:0 24px}
 .hero .stat-line{font-size:13px;color:var(--dim);margin-bottom:26px}
 .hero .stat-line b{color:var(--accent2);font-weight:600}
 
-.waitlist{display:flex;gap:8px;max-width:420px}
-.waitlist input{flex:1}
-.waitlist-msg{margin-top:10px;font-size:12.5px;min-height:1.4em}
-.waitlist-msg.ok{color:var(--accent2)}
-.waitlist-msg.err{color:var(--hot)}
-.waitlist-note{margin-top:8px;font-size:11.5px;color:var(--dim)}
+.hero-cta{display:inline-block;background:var(--accent);color:#0d1117;font-weight:600;
+  font-size:14px;padding:11px 20px;border-radius:8px;transition:background-color .12s ease}
+.hero-cta:hover{background:#79b8ff;text-decoration:none}
+.hero-note{margin-top:10px;font-size:11.5px;color:var(--dim)}
 
 .demo-label{font-size:11px;color:var(--dim);text-transform:uppercase;
   letter-spacing:.04em;margin-bottom:8px}
@@ -135,12 +133,8 @@ footer p{margin-bottom:4px}
       <p class="stat-line">Currently archiving <b>{{ total }}</b> real assets ·
         {{ archived }} with the original file preserved · {{ official }} official</p>
 
-      <form class="waitlist" id="waitlistForm">
-        <input type="email" id="waitlistEmail" placeholder="you@example.com" required>
-        <button type="submit" class="primary" id="waitlistBtn">Join the waitlist</button>
-      </form>
-      <div class="waitlist-msg" id="waitlistMsg"></div>
-      <p class="waitlist-note">Be first to hear about the public beta. No spam.</p>
+      <a href="/app" class="hero-cta">Browse the archive →</a>
+      <p class="hero-note">No signup needed — sign in later if you want your own collections.</p>
       {% else %}
       <h2>발견한 자산을 저장만 하지 말고,<br>클릭 한 번으로 바로 실행하세요.</h2>
       <p class="sub">cursor.directory나 awesomeclaude.ai는 Claude Code·Cursor 자산을
@@ -149,12 +143,8 @@ footer p{margin-bottom:4px}
       <p class="stat-line">현재 <b>{{ total }}건</b>의 자산을 실제로 보관 중 ·
         원문 아카이브 {{ archived }}건 · 공식 자산 {{ official }}건</p>
 
-      <form class="waitlist" id="waitlistForm">
-        <input type="email" id="waitlistEmail" placeholder="you@example.com" required>
-        <button type="submit" class="primary" id="waitlistBtn">대기자 명단 등록</button>
-      </form>
-      <div class="waitlist-msg" id="waitlistMsg"></div>
-      <p class="waitlist-note">공개 베타 소식을 가장 먼저 받아보세요. 스팸 없음.</p>
+      <a href="/app" class="hero-cta">아카이브 둘러보기 →</a>
+      <p class="hero-note">가입 없이 바로 써보세요 — 즐겨찾기·모음집이 필요할 때만 로그인하면 됩니다.</p>
       {% endif %}
     </div>
 
@@ -236,10 +226,8 @@ footer p{margin-bottom:4px}
 const $ = s => document.querySelector(s);
 const LANG = {{ lang | tojson }};
 const MSG = LANG === 'en'
-  ? {ok: "You're on the list. We'll email you the moment the public beta is live.",
-     copy: 'Copy', copied: 'Copied!'}
-  : {ok: '등록되었습니다. 공개 베타 소식을 가장 먼저 알려드릴게요.',
-     copy: '복사', copied: '복사됨!'};
+  ? {copy: 'Copy', copied: 'Copied!'}
+  : {copy: '복사', copied: '복사됨!'};
 
 document.querySelectorAll('.cmdbox .copy').forEach(btn => {
   btn.addEventListener('click', async () => {
@@ -255,31 +243,6 @@ document.querySelectorAll('.cmdbox .copy').forEach(btn => {
   });
 });
 
-$('#waitlistForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = $('#waitlistEmail').value.trim();
-  const btn = $('#waitlistBtn');
-  const msg = $('#waitlistMsg');
-  btn.disabled = true;
-  msg.className = 'waitlist-msg';
-  msg.textContent = '';
-  try {
-    const r = await fetch('/api/waitlist', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email}),
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || (LANG === 'en' ? 'Something went wrong' : '등록에 실패했습니다'));
-    msg.className = 'waitlist-msg ok';
-    msg.textContent = MSG.ok;
-    $('#waitlistForm').reset();
-  } catch (err) {
-    msg.className = 'waitlist-msg err';
-    msg.textContent = err.message;
-  } finally {
-    btn.disabled = false;
-  }
-});
 </script>
 </body>
 </html>

@@ -271,17 +271,6 @@ def api_admin_verify_user():
     return jsonify({"ok": True, "email": email})
 
 
-@app.route("/api/waitlist", methods=["POST"])
-def api_waitlist():
-    data = request.get_json(force=True, silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
-        return jsonify({"error": _e("api.email_invalid")}), 400
-    db = get_db()
-    db.execute("INSERT OR IGNORE INTO waitlist (email, created_at) VALUES (?, ?)",
-              (email[:200], now_iso()))
-    db.commit()
-    return jsonify({"ok": True})
 
 
 # ---------- 자산 목록/상세 ----------
