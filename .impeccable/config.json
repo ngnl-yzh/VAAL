@@ -1,7 +1,9 @@
 {
   "detector": {
     "ignoreRules": [],
-    "ignoreFiles": [],
+    "ignoreFiles": [
+      "static/og-source.html"
+    ],
     "ignoreValues": [
       {
         "rule": "design-system-color",

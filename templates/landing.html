@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="qeSVebudVFp1_KYOapum3PiqIpg-UH-X5Ba5mjJgD20" />
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 {% if lang == 'en' %}
 <title>Runcast — Turn what you found into a command you can run</title>
 <meta name="description" content="Runcast archives Claude Code and Cursor assets and turns any of them into a ready-to-run terminal or Claude Code command with one click.">
@@ -11,6 +12,14 @@
 <title>Runcast — 발견한 자산을 클릭 한 번으로 실행 가능한 커맨드로</title>
 <meta name="description" content="Claude Code·Cursor 자산을 자동 수집·보관하고, 클릭 한 번으로 터미널/Claude Code 실행 커맨드를 즉시 만들어주는 아카이버 & 런처.">
 {% endif %}
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ request.url_root }}">
+<meta property="og:title" content="Runcast — Don't just save what you find. Run it.">
+<meta property="og:description" content="Archives Claude Code and Cursor assets and turns any of them into a ready-to-run command with one click.">
+<meta property="og:image" content="{{ request.url_root }}static/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Runcast — Don't just save what you find. Run it.">
+<meta name="twitter:image" content="{{ request.url_root }}static/og-image.png">
 <style>
 {% include "_tokens.css.html" %}
 *{box-sizing:border-box;margin:0;padding:0}
