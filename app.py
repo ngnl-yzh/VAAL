@@ -334,7 +334,9 @@ def api_assets():
     elif flt == "recommended":
         # 추천 힌트 (기획서 6.5): 고평점·애용 자산과 태그가 겹치는 신규 자산
         sql += " AND id IN (SELECT id FROM assets WHERE " + _recommend_where() + ")"
-    sql += f" ORDER BY {sort} LIMIT 500"
+    # TODO: 자산이 계속 늘어나므로(주간 자동 수집) 언젠가는 진짜 페이지네이션이 필요함.
+    # 지금은 500건 하드 리밋으로 자산이 다 안 보이던 문제만 급한 대로 늘려둠.
+    sql += f" ORDER BY {sort} LIMIT 5000"
 
     db = get_db()
     rows = db.execute(sql, args).fetchall()
