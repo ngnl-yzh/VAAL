@@ -16,7 +16,8 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:6px;
   transition:background-color .12s ease}
 button:hover{background:var(--hover-panel)}
 header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line)}
-header h1{font-size:17px}
+header h1{font-size:17px;display:flex;align-items:center;gap:8px}
+header h1 .logo-icon{width:24px;height:24px;border-radius:6px;vertical-align:middle}
 header h1 a{color:var(--text)}
 header h1 span{color:var(--accent)}
 header nav{margin-left:auto}
@@ -43,7 +44,7 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
 </head>
 <body>
 <header>
-  <h1><a href="/">Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
+  <h1><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" class="logo-icon"> Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
   <nav><a href="/app">{{ 'Browse the archive' if lang == 'en' else '아카이브 둘러보기' }}</a></nav>
 </header>
 <main>

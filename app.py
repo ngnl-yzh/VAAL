@@ -371,13 +371,18 @@ def api_asset_detail(asset_id):
     if not row:
         return jsonify({"error": _e("api.not_found")}), 404
     db = get_db()
-    d = _asset_dict_with_fav(row, _my_favorite_ids(db, current_user()))
-    # 원문 미리보기 (아카이브에서) — 공개 배포(READONLY)에서는 18장 규칙대로
-    # 라이선스가 허용 목록에 있을 때만, 그것도 짧은 스니펫만 노출한다.
+    u = current_user()
+    d = _asset_dict_with_fav(row, _my_favorite_ids(db, u))
+    # 원문 미리보기 (아카이브에서) — 18장 규칙: 관리자(archive 소유자) 본인은
+    # 항상 전체 원문을 볼 수 있지만(개인 보관용 사본이라는 취지), 그 외 모든
+    # 방문자(비로그인 포함)에게는 라이선스가 허용 목록에 있을 때만, 그것도
+    # 짧은 스니펫만 노출한다. READONLY 여부와 무관하게 항상 적용된다 —
+    # 관리자 판별로 나뉘는 것이지 배포 모드 플래그로 나뉘는 게 아니다.
+    is_owner_viewer = bool(u and auth.is_admin_email(u["email"]))
     archived = row["archive_status"] == "archived"
-    gated = archived and READONLY and not archiver.license_allows_preview(row["license"])
+    gated = archived and not is_owner_viewer and not archiver.license_allows_preview(row["license"])
     if archived and not gated:
-        limit = PUBLIC_PREVIEW_LIMIT if READONLY else 2500
+        limit = 2500 if is_owner_viewer else PUBLIC_PREVIEW_LIMIT
         d["original_preview"] = archiver.read_original(row, limit)
     else:
         d["original_preview"] = ""
