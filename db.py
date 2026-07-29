@@ -131,13 +131,14 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
 
--- 사용자별 개인 모음집 + 공유 링크
+-- 사용자별 개인 모음집 + 공유 링크 (기본은 비공개 — is_shared=1일 때만 /c/<slug> 공개)
 CREATE TABLE IF NOT EXISTS collections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     share_slug TEXT NOT NULL UNIQUE,
+    is_shared INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -184,33 +185,40 @@ def connect():
     return con
 
 
-def _assets_columns():
-    """SCHEMA의 assets 정의 블록만 잘라 '컬럼명 → 정의' 로 파싱한다."""
-    body = SCHEMA.split("CREATE TABLE IF NOT EXISTS assets (", 1)[1].split("\n);", 1)[0]
+_TABLE_CONSTRAINT_KEYWORDS = {"FOREIGN", "PRIMARY", "UNIQUE", "CHECK", "CONSTRAINT"}
+
+
+def _table_columns(table):
+    """SCHEMA에서 해당 테이블 정의 블록만 잘라 '컬럼명 → 정의' 로 파싱한다.
+
+    테이블 레벨 제약(FOREIGN KEY 등) 줄은 컬럼이 아니므로 건너뛴다.
+    """
+    body = SCHEMA.split(f"CREATE TABLE IF NOT EXISTS {table} (", 1)[1].split("\n);", 1)[0]
     cols = {}
     for line in body.splitlines():
         line = line.split("--")[0].strip().rstrip(",").strip()
         if not line:
             continue
         name = line.split()[0]
-        if name.isidentifier() and name != "id":
+        if name.isidentifier() and name != "id" and name.upper() not in _TABLE_CONSTRAINT_KEYWORDS:
             cols[name] = line
     return cols
 
 
-def _migrate_assets(con):
+def _migrate_table(con, table):
     """기존 DB에 새 컬럼이 추가된 경우 ALTER TABLE 로 따라잡는다."""
-    existing = {r[1] for r in con.execute("PRAGMA table_info(assets)")}
-    for name, ddl in _assets_columns().items():
+    existing = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+    for name, ddl in _table_columns(table).items():
         if name not in existing:
-            con.execute(f"ALTER TABLE assets ADD COLUMN {ddl}")
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
 
 
 def init_db(con=None):
     own = con is None
     con = con or connect()
     con.executescript(SCHEMA)
-    _migrate_assets(con)
+    _migrate_table(con, "assets")
+    _migrate_table(con, "collections")
     for key, value in DEFAULT_SETTINGS.items():
         con.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
                     (key, str(value)))

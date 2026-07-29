@@ -671,6 +671,22 @@ def api_collections():
     return jsonify(dict(row))
 
 
+@app.route("/api/collections/<int:coll_id>/share", methods=["POST"])
+@login_required
+def api_collection_share(coll_id):
+    u = current_user()
+    if not _owned_collection(coll_id, u["id"]):
+        return jsonify({"error": _e("api.not_found")}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    db = get_db()
+    db.execute(
+        "UPDATE collections SET is_shared = ?, description = ? WHERE id = ?",
+        (1 if data.get("shared") else 0, str(data.get("description", ""))[:300], coll_id))
+    db.commit()
+    row = db.execute("SELECT * FROM collections WHERE id = ?", (coll_id,)).fetchone()
+    return jsonify(dict(row))
+
+
 @app.route("/api/collections/<int:coll_id>/items", methods=["POST"])
 @login_required
 def api_collection_add_item(coll_id):
@@ -713,14 +729,16 @@ def collections_page():
 def collection_public(slug):
     db = get_db()
     coll = db.execute("SELECT * FROM collections WHERE share_slug = ?", (slug,)).fetchone()
-    if not coll:
+    u = current_user()
+    is_owner = bool(coll and u and u["id"] == coll["user_id"])
+    # 비공개 모음집은 주인 본인 미리보기 외엔 존재 자체를 드러내지 않는다
+    # (없는 slug와 똑같이 "찾을 수 없음"으로 응답 — 링크 추측 방지).
+    if not coll or (not coll["is_shared"] and not is_owner):
         return render_template("collection_public.html", coll=None), 404
     items = db.execute(
         """SELECT a.* FROM collection_items ci JOIN assets a ON a.id = ci.asset_id
            WHERE ci.collection_id = ? ORDER BY ci.added_at DESC""",
         (coll["id"],)).fetchall()
-    u = current_user()
-    is_owner = bool(u and u["id"] == coll["user_id"])
     return render_template("collection_public.html", coll=dict(coll),
                            items=[asset_dict(r) for r in items], is_owner=is_owner)
 

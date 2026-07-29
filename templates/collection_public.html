@@ -52,7 +52,12 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:8px}
   <div class="empty">{{ t('coll.public_not_found') }}</div>
 {% else %}
   <h2>{{ coll.name }}</h2>
-  {% if is_owner %}<p class="owner-note"><a href="/collections">← {{ t('coll.my_collections_title') }}</a></p>{% endif %}
+  {% if coll.description %}<p class="owner-note">{{ coll.description }}</p>{% endif %}
+  {% if is_owner and not coll.is_shared %}
+  <p class="owner-note">🔒 {{ t('coll.private_owner_note') }} <a href="/collections">{{ t('coll.my_collections_title') }}</a></p>
+  {% elif is_owner %}
+  <p class="owner-note"><a href="/collections">← {{ t('coll.my_collections_title') }}</a></p>
+  {% endif %}
 
   {% if not items %}
   <div class="empty">{{ t('coll.empty') }}</div>

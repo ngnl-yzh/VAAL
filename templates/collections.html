@@ -36,6 +36,11 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
 .card .top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .card .name{font-weight:600;font-size:15px}
 .card .count{color:var(--dim);font-size:12.5px;margin-left:auto}
+.badge{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--panel2);color:var(--dim)}
+.badge.shared{background:var(--accent2);color:#0d1117}
+.note{color:var(--dim);font-size:12px;margin-top:6px}
+.sharepanel{display:flex;gap:8px;align-items:center;margin-top:10px}
+.sharepanel input{flex:1;font-size:13px}
 .sharebox{display:flex;gap:8px;align-items:center;margin-top:8px}
 .sharebox input{flex:1;font-size:12.5px;color:var(--dim);font-family:Consolas,monospace}
 .copyok{color:var(--accent2);font-size:12px;margin-left:6px}
@@ -60,16 +65,31 @@ h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;margin-bottom:24px}
     <div class="empty">{{ t('coll.empty') }}</div>
     {% endif %}
     {% for c in collections %}
-    <div class="card">
+    <div class="card" data-id="{{ c.id }}" data-desc="{{ c.description }}">
       <div class="top">
         <span class="name">{{ c.name }}</span>
+        <span class="badge {{ 'shared' if c.is_shared else '' }}">
+          {{ t('coll.shared_badge') if c.is_shared else t('coll.private_badge') }}</span>
         <span class="count">{{ t('coll.item_count').replace('{n}', c.item_count|string) }}</span>
         <a href="/c/{{ c.share_slug }}">{{ t('coll.view') }} →</a>
       </div>
+
+      {% if c.is_shared %}
       <div class="sharebox">
         <input readonly value="{{ request.host_url.rstrip('/') }}/c/{{ c.share_slug }}" onclick="this.select()">
         <button class="copybtn" data-url="{{ request.host_url.rstrip('/') }}/c/{{ c.share_slug }}">{{ t('coll.copy_link') }}</button>
       </div>
+      <p class="note">{{ t('coll.shared_note') }}</p>
+      <button class="unsharebtn" data-id="{{ c.id }}">{{ t('coll.unshare_button') }}</button>
+      {% else %}
+      <p class="note">{{ t('coll.private_note') }}</p>
+      <button class="sharebtn" data-id="{{ c.id }}">{{ t('coll.share_button') }}</button>
+      <div class="sharepanel" hidden>
+        <input class="descinput" placeholder="{{ t('coll.description_placeholder') }}"
+               value="{{ c.description }}" maxlength="300">
+        <button class="primary savebtn" data-id="{{ c.id }}">{{ t('coll.share_save') }}</button>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -102,6 +122,36 @@ $('#newForm').addEventListener('submit', async (e) => {
   });
   if (r.ok) location.reload();
   else { const d = await r.json(); alert(d.error || 'Error'); }
+});
+
+async function setShared(id, shared, description) {
+  const r = await fetch(`/api/collections/${id}/share`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({shared, description}),
+  });
+  if (r.ok) location.reload();
+  else { const d = await r.json(); alert(d.error || 'Error'); }
+}
+
+document.querySelectorAll('.sharebtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.closest('.card').querySelector('.sharepanel').hidden = false;
+    btn.hidden = true;
+  });
+});
+document.querySelectorAll('.savebtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const card = btn.closest('.card');
+    const desc = card.querySelector('.descinput').value.trim();
+    setShared(btn.dataset.id, true, desc);
+  });
+});
+document.querySelectorAll('.unsharebtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!confirm({{ t('coll.unshare_button') | tojson }} + '?')) return;
+    const desc = btn.closest('.card').dataset.desc || '';
+    setShared(btn.dataset.id, false, desc);
+  });
 });
 </script>
 </body>
