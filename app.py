@@ -250,6 +250,23 @@ def verify_email(token):
     return render_template("verify.html", ok=bool(row))
 
 
+@app.route("/api/admin/verify-user", methods=["POST"])
+@admin_required
+def api_admin_verify_user():
+    """SMTP 미설정 배포에서 이메일 링크 없이 계정을 강제 인증한다.
+    CRON_SECRET 또는 관리자 세션으로만 호출 가능."""
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    db = get_db()
+    row = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if not row:
+        return jsonify({"error": _e("api.not_found")}), 404
+    db.execute("UPDATE users SET email_verified = 1, verify_token = '' WHERE id = ?",
+              (row["id"],))
+    db.commit()
+    return jsonify({"ok": True, "email": email})
+
+
 @app.route("/api/waitlist", methods=["POST"])
 def api_waitlist():
     data = request.get_json(force=True, silent=True) or {}
