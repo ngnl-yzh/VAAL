@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% if lang == 'en' %}
-<title>VAAL — Turn what you found into a command you can run</title>
-<meta name="description" content="VAAL archives Claude Code and Cursor assets and turns any of them into a ready-to-run terminal or Claude Code command with one click.">
+<title>Runcast — Turn what you found into a command you can run</title>
+<meta name="description" content="Runcast archives Claude Code and Cursor assets and turns any of them into a ready-to-run terminal or Claude Code command with one click.">
 {% else %}
-<title>VAAL — 발견한 자산을 클릭 한 번으로 실행 가능한 커맨드로</title>
+<title>Runcast — 발견한 자산을 클릭 한 번으로 실행 가능한 커맨드로</title>
 <meta name="description" content="Claude Code·Cursor 자산을 자동 수집·보관하고, 클릭 한 번으로 터미널/Claude Code 실행 커맨드를 즉시 만들어주는 아카이버 & 런처.">
 {% endif %}
 <style>
@@ -102,7 +102,7 @@ footer p{margin-bottom:4px}
 <body>
 
 <header>
-  <h1><a href="/">VAAL <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
+  <h1><a href="/">Runcast <span>{{ 'Launcher' if lang == 'en' else '런처' }}</span></a></h1>
   <nav>
     <a href="/app">{{ 'Browse the full archive →' if lang == 'en' else '전체 아카이브 둘러보기 →' }}</a>
     <div class="langsw">
@@ -119,7 +119,7 @@ footer p{margin-bottom:4px}
       {% if lang == 'en' %}
       <h2>Don't just save what you find.<br>Run it with one click.</h2>
       <p class="sub">cursor.directory and awesomeclaude.ai stop at showing you a list.
-        VAAL turns any Claude Code or Cursor asset into a ready-to-run terminal
+        Runcast turns any Claude Code or Cursor asset into a ready-to-run terminal
         command and a Claude Code command, on the spot.</p>
       <p class="stat-line">Currently archiving <b>{{ total }}</b> real assets ·
         {{ archived }} with the original file preserved · {{ official }} official</p>
@@ -133,7 +133,7 @@ footer p{margin-bottom:4px}
       {% else %}
       <h2>발견한 자산을 저장만 하지 말고,<br>클릭 한 번으로 바로 실행하세요.</h2>
       <p class="sub">cursor.directory나 awesomeclaude.ai는 Claude Code·Cursor 자산을
-        목록으로 보여주는 데서 끝납니다. VAAL은 그 자리에서 터미널 버전과
+        목록으로 보여주는 데서 끝납니다. Runcast는 그 자리에서 터미널 버전과
         Claude Code 버전, 두 가지 실행 커맨드를 즉시 만들어 드립니다.</p>
       <p class="stat-line">현재 <b>{{ total }}건</b>의 자산을 실제로 보관 중 ·
         원문 아카이브 {{ archived }}건 · 공식 자산 {{ official }}건</p>
@@ -185,8 +185,8 @@ footer p{margin-bottom:4px}
     {% if lang == 'en' %}
     <h3>How this is different from a directory</h3>
     <ul>
-      <li>Unlike link-only directories, VAAL downloads and keeps the original file — the asset survives even if the source disappears.</li>
-      <li>Instead of a browse-only catalog, VAAL generates both a terminal and a Claude Code command the moment you need it.</li>
+      <li>Unlike link-only directories, Runcast downloads and keeps the original file — the asset survives even if the source disappears.</li>
+      <li>Instead of a browse-only catalog, Runcast generates both a terminal and a Claude Code command the moment you need it.</li>
       <li>Ratings, reviews, and a trend score aren't bolted on later — they're built into the data model from day one.</li>
     </ul>
     {% else %}
@@ -204,14 +204,14 @@ footer p{margin-bottom:4px}
   <div class="foot-inner">
     {% if lang == 'en' %}
     <div>
-      <p>VAAL is not affiliated with Anthropic or Cursor.</p>
+      <p>Runcast is not affiliated with Anthropic or Cursor.</p>
       <p>Each asset remains the property of its original author. Only license-confirmed assets get an original-text snippet.</p>
       <p><a href="/privacy">Privacy policy</a></p>
     </div>
     <div><a href="/app">Browse the full archive →</a></div>
     {% else %}
     <div>
-      <p>VAAL은 Anthropic, Cursor와 공식 제휴 관계가 없습니다.</p>
+      <p>Runcast는 Anthropic, Cursor와 공식 제휴 관계가 없습니다.</p>
       <p>각 자산의 저작권은 원저작자에게 있으며, 라이선스가 확인된 자산만 원문 스니펫을 제공합니다.</p>
       <p><a href="/privacy">개인정보처리방침</a></p>
     </div>

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""VAAL 다국어 지원 — 영어가 기본, 한국어로 전환 가능.
+"""Runcast 다국어 지원 — 영어가 기본, 한국어로 전환 가능.
 
 DB에 저장되는 값(type/source 키, category 문자열)은 그대로 두고
 화면에 보여줄 라벨만 로케일별로 분리한다. category는 원래 한국어
@@ -57,7 +57,7 @@ def category_label(category, lang):
 
 T = {
     "en": {
-        "app.title": "VAAL — Personal Command Archiver & Launcher",
+        "app.title": "Runcast — Personal Command Archiver & Launcher",
         "header.launcher": "Launcher",
         "header.search_placeholder": "Search — name, purpose, tag, repo…",
         "sort.trend": "Trending", "sort.recent": "Newest",
@@ -151,8 +151,8 @@ T = {
 
         "auth.login": "Log in", "auth.logout": "Log out", "auth.signup": "Sign up",
         "auth.my_collections": "My collections",
-        "auth.signup_title": "Create your VAAL account",
-        "auth.login_title": "Log in to VAAL",
+        "auth.signup_title": "Create your Runcast account",
+        "auth.login_title": "Log in to Runcast",
         "auth.email": "Email", "auth.password": "Password",
         "auth.password_confirm": "Confirm password",
         "auth.signup_button": "Create account", "auth.login_button": "Log in",
@@ -185,7 +185,7 @@ T = {
         "coll.view": "Open",
     },
     "ko": {
-        "app.title": "VAAL — 바이브코딩 자산 아카이버 & 런처",
+        "app.title": "Runcast — 바이브코딩 자산 아카이버 & 런처",
         "header.launcher": "런처",
         "header.search_placeholder": "검색 — 이름·용도·태그·저장소…",
         "sort.trend": "트렌드순", "sort.recent": "최신순",
@@ -279,8 +279,8 @@ T = {
 
         "auth.login": "로그인", "auth.logout": "로그아웃", "auth.signup": "회원가입",
         "auth.my_collections": "내 모음집",
-        "auth.signup_title": "VAAL 계정 만들기",
-        "auth.login_title": "VAAL 로그인",
+        "auth.signup_title": "Runcast 계정 만들기",
+        "auth.login_title": "Runcast 로그인",
         "auth.email": "이메일", "auth.password": "비밀번호",
         "auth.password_confirm": "비밀번호 확인",
         "auth.signup_button": "계정 만들기", "auth.login_button": "로그인",
