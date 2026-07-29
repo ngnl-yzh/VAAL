@@ -139,7 +139,8 @@ def enrich_assets(con, limit=40, log=print):
             con.execute(
                 """UPDATE assets SET
                      purpose_summary = ?, usage_summary = ?, ai_review_draft = ?,
-                     args_schema = ?, terminal_template = ?, claude_code_template = ?,
+                     args_schema = ?, args_schema_en = ?,
+                     terminal_template = ?, claude_code_template = ?,
                      cursor_apply_guide = ?, install_command = ?,
                      terminal_template_en = ?, claude_code_template_en = ?,
                      cursor_apply_guide_en = ?, install_command_en = ?, category = ?,
@@ -149,6 +150,7 @@ def enrich_assets(con, limit=40, log=print):
                  str(item.get("usage", ""))[:900],
                  str(item.get("review", ""))[:600],
                  templater.to_json(tmpl["args_schema"]),
+                 templater.to_json(tmpl["args_schema_en"]),
                  tmpl["terminal_template"], tmpl["claude_code_template"],
                  tmpl["cursor_apply_guide"], tmpl["install_command"],
                  tmpl["terminal_template_en"], tmpl["claude_code_template_en"],
@@ -182,25 +184,29 @@ def backfill_categories(con, log=print):
 def build_templates_only(con, log=print):
     """AI 없이 규칙 기반 템플릿만이라도 채운다 (claude CLI 부재 시 폴백).
 
-    한 번도 템플릿이 안 채워진 자산은 물론, rule/etc 타입인데 영어판(_en)만
-    누락된 기존 자산도 함께 잡아서 다시 만든다 (다국어 지원 추가 후 백필용).
+    한 번도 템플릿이 안 채워진 자산, rule/etc 타입인데 영어판(_en)만 누락된
+    자산, 인자 설명이 있는데 영어판 인자 설명만 누락된 자산(타입 무관, 예:
+    argument-hint가 있는 skill/command)까지 함께 잡아서 다시 만든다.
     """
     rows = con.execute(
         "SELECT * FROM assets WHERE "
         "(claude_code_template = '' AND cursor_apply_guide = '') "
         "OR (type IN ('rule', 'etc') AND claude_code_template_en = '' "
-        "    AND cursor_apply_guide_en = '')").fetchall()
+        "    AND cursor_apply_guide_en = '') "
+        "OR (args_schema != '[]' AND args_schema_en = '[]')").fetchall()
     count = 0
     for r in rows:
         original = archiver.read_original(r, 3000)
         tmpl = templater.build(r, original)
         con.execute(
-            """UPDATE assets SET args_schema = ?, terminal_template = ?,
-                 claude_code_template = ?, cursor_apply_guide = ?,
-                 install_command = ?, terminal_template_en = ?,
-                 claude_code_template_en = ?, cursor_apply_guide_en = ?,
-                 install_command_en = ?, updated_at = ? WHERE id = ?""",
-            (templater.to_json(tmpl["args_schema"]), tmpl["terminal_template"],
+            """UPDATE assets SET args_schema = ?, args_schema_en = ?,
+                 terminal_template = ?, claude_code_template = ?,
+                 cursor_apply_guide = ?, install_command = ?,
+                 terminal_template_en = ?, claude_code_template_en = ?,
+                 cursor_apply_guide_en = ?, install_command_en = ?,
+                 updated_at = ? WHERE id = ?""",
+            (templater.to_json(tmpl["args_schema"]), templater.to_json(tmpl["args_schema_en"]),
+             tmpl["terminal_template"],
              tmpl["claude_code_template"], tmpl["cursor_apply_guide"],
              tmpl["install_command"], tmpl["terminal_template_en"],
              tmpl["claude_code_template_en"], tmpl["cursor_apply_guide_en"],

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS assets (
     purpose_summary TEXT DEFAULT '',     -- AI 용도 요약
     usage_summary TEXT DEFAULT '',       -- AI 사용법 요약
     args_schema TEXT DEFAULT '[]',       -- JSON: [{name, required, description}]
+    args_schema_en TEXT DEFAULT '[]',    -- 위 args_schema의 영어판 설명문
     terminal_template TEXT DEFAULT '',
     claude_code_template TEXT DEFAULT '',
     cursor_apply_guide TEXT DEFAULT '',
@@ -309,7 +310,7 @@ def record_stars(con, asset_id, stars):
 def asset_dict(row):
     """sqlite3.Row → JSON 직렬화 가능한 dict (JSON 컬럼 파싱 포함)."""
     d = dict(row)
-    for col in ("args_schema", "tags"):
+    for col in ("args_schema", "args_schema_en", "tags"):
         try:
             d[col] = json.loads(d.get(col) or "[]")
         except (TypeError, ValueError):

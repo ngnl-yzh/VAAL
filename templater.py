@@ -51,11 +51,12 @@ def guess_command_name(asset, text=""):
 
 
 def extract_args(text, fm=None, atype="etc"):
-    """문서에서 인자 후보를 뽑는다. 결과: [{name, required, description}]
+    """문서에서 인자 후보를 뽑는다. 결과: [{name, required, description, description_en}]
 
     프론트매터 argument-hint가 가장 신뢰도 높고, 그다음이 $ARGUMENTS/$1 표기다.
     본문의 <x>·[x] 스캔은 오탐(마크다운 링크·강조)이 많아 커맨드에만, 그것도
     명시적 인자 표기가 없을 때만 최후수단으로 쓴다.
+    description/description_en은 한국어·영어 뷰어에게 각각 보여줄 설명이다.
     """
     fm = fm if fm is not None else parse_frontmatter(text)
     args, seen = [], set()
@@ -66,14 +67,16 @@ def extract_args(text, fm=None, atype="etc"):
         if name and name.lower() not in seen:
             seen.add(name.lower())
             args.append({"name": name, "required": bool(m.group(1)),
-                         "description": f'{name} (from "{hint}")'})
+                         "description": f'"{hint}" 중 {name}',
+                         "description_en": f'{name} (from "{hint}")'})
     if args:
         return args
 
     body = FM_RE.sub("", text or "")
     if "$ARGUMENTS" in body:
         return [{"name": "arguments", "required": False,
-                 "description": "the full argument text, passed as-is to the command"}]
+                 "description": "커맨드에 그대로 전달되는 인자 전체",
+                 "description_en": "the full argument text, passed as-is to the command"}]
 
     # 스킬은 자연어로 호출되고 본문에 코드·수식이 많아(엑셀 A$2 등) 오탐이 더 해롭다.
     # 본문 추정은 커맨드에만 적용한다.
@@ -83,7 +86,8 @@ def extract_args(text, fm=None, atype="etc"):
     positional = sorted({m.group(0) for m in re.finditer(r"(?<![\w$])\$\d+", body)})
     if positional:
         return [{"name": p.lstrip("$"), "required": True,
-                 "description": f"{p} positional argument"} for p in positional[:4]]
+                 "description": f"{p} 위치 인자",
+                 "description_en": f"{p} positional argument"} for p in positional[:4]]
 
     for m in _body_arg_tokens(body[:4000]):
         name = (m.group(1) or m.group(2) or "").strip()
@@ -91,7 +95,8 @@ def extract_args(text, fm=None, atype="etc"):
         if not name or low in seen or low in PLACEHOLDER_STOPWORDS or len(name) > 24:
             continue
         seen.add(low)
-        args.append({"name": name, "required": bool(m.group(1)), "description": ""})
+        args.append({"name": name, "required": bool(m.group(1)),
+                     "description": "", "description_en": ""})
         if len(args) >= 4:
             break
     return args
@@ -116,14 +121,23 @@ def arg_placeholder(args):
         f"<{a['name']}>" if a.get("required") else f"[{a['name']}]" for a in args)
 
 
+def _split_args_schema(args):
+    """extract_args()가 만든 description/description_en 합본을 KO/EN 스키마로 분리한다."""
+    ko = [{"name": a["name"], "required": a.get("required", False),
+           "description": a.get("description", "")} for a in args]
+    en = [{"name": a["name"], "required": a.get("required", False),
+           "description": a.get("description_en", "")} for a in args]
+    return ko, en
+
+
 def build(asset, text=""):
     """자산 하나의 실행 템플릿 묶음을 만든다.
 
     반환: dict(terminal_template, claude_code_template, cursor_apply_guide,
-              install_command, args_schema, 그리고 각 템플릿의 영어판 *_en)
+              install_command, args_schema, 그리고 각 필드의 영어판 *_en)
 
     slash-command류(skill/command/plugin)는 애초에 언어 중립적이라 *_en이
-    base와 동일하다. rule/etc만 자연어 문장이 섞여 있어 실제로 번역이 갈린다.
+    base와 동일하다. rule/etc, args_schema의 설명문만 자연어라 실제로 번역이 갈린다.
     """
     atype = asset["type"]
     repo = asset["repo_full_name"] or ""
@@ -136,13 +150,15 @@ def build(asset, text=""):
     fm = parse_frontmatter(text)
     args = extract_args(text, fm, atype)
     ph = arg_placeholder(args)
+    args_schema, args_schema_en = _split_args_schema(args)
 
     out = {
         "terminal_template": "", "terminal_template_en": "",
         "claude_code_template": "", "claude_code_template_en": "",
         "cursor_apply_guide": "", "cursor_apply_guide_en": "",
         "install_command": "", "install_command_en": "",
-        "args_schema": args,
+        "args_schema": args_schema,
+        "args_schema_en": args_schema_en,
     }
 
     if atype == "skill":
@@ -256,11 +272,16 @@ def apply_ai_args(result, ai_payload):
                 })
         if clean:
             result["args_schema"] = clean
+            # AI 인자 설명은 한국어뿐이라 영어판 설명은 대응이 끊긴다 — base로 폴백하도록 비운다.
+            result["args_schema_en"] = []
             ph = arg_placeholder(clean)
             base = result["claude_code_template"].split(" ")[0]
             if base.startswith("/"):
                 result["claude_code_template"] = f"{base}{ph}"
                 result["terminal_template"] = f'claude "{base}{ph}"'
+                # skill/command류는 언어 중립적이라 영어판도 그대로 맞춰준다.
+                result["claude_code_template_en"] = result["claude_code_template"]
+                result["terminal_template_en"] = result["terminal_template"]
     for key in ("terminal_template", "claude_code_template", "cursor_apply_guide"):
         value = ai_payload.get(key)
         if isinstance(value, str) and value.strip() and not result[key]:

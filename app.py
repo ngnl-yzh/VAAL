@@ -358,11 +358,12 @@ def _my_favorite_ids(db, user):
 
 
 _LOCALIZABLE_TEMPLATE_FIELDS = (
-    "terminal_template", "claude_code_template", "cursor_apply_guide", "install_command")
+    "terminal_template", "claude_code_template", "cursor_apply_guide", "install_command",
+    "args_schema")
 
 
 def _localize_templates(d):
-    """뷰어 언어에 맞는 실행 템플릿(Run it now)으로 교체하고 raw _en 키는 감춘다."""
+    """뷰어 언어에 맞는 실행 템플릿(Run it now)·인자 설명으로 교체하고 raw _en 키는 감춘다."""
     for key in _LOCALIZABLE_TEMPLATE_FIELDS:
         en_val = d.pop(f"{key}_en", None)
         if g.lang == "en" and en_val:
